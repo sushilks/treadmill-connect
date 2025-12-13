@@ -1,0 +1,3604 @@
+--- Page 1 ---
+ 
+Bluetooth SIG Proprietary 
+Fitness Machine Service  
+Bluetooth® Service Specification 
+ Revision: v1.0 
+ Revision Date: 2017-Feb-14 
+ Group Prepared By: Sports and Fitness Working Group 
+ Feedback Email: sf-main@bluetooth.org 
+ 
+Abstract:  
+This service exposes training-related data in the sports and fitness environment, which allows a Server (e.g., a 
+fitness machine) to send training-related data to a Client. 
+ 
+
+--- Page 2 ---
+ Fitness Machine Service  /  Service Specification 
+Bluetooth SIG Proprietary Page 2 of 78 
+Revision History 
+Revision Number Date Comments 
+D05r00 2015-08-21 Initial draft based on the User Data Service 
+D05r01 2015-09-02 Document aligned with the last changes made in the 
+characteristics definitions. Comments from the team have 
+also been addressed. 
+D05r02 2015-09-18 Accepted all changes. Comments from the group have 
+been addressed and the Service Advertising Data Section 
+has been added to this document. 
+D05r03 2015-09-24 Fitness Machine Feature and Controllable Fitness Machine 
+Feature characteristics have been merged and moved to 
+the Service specification. The Training State characteristic 
+has also been moved to the Service. New Op Codes added 
+to the Fitness Machine Control Point in order to allow a 
+Client to set Targeted Values (e.g., Distance, Expended 
+Energy, etc.) Comments from the team have also been 
+addressed. 
+D05r04 2015-10-01 Accepted all changes. Added the Set Time In HR Zones (2, 
+3 and 5 zones) procedures to the Fitness Machine Control 
+Point. Fixed a few minor issues that were discussed during 
+the SF WG weekly meeting (2015-09-29). 
+D05r05 2015-12-08 Accepted all changes. Added new Control Point procedures 
+in order to enable the indoor bike simulation feature. 
+Comments from the team have also been addressed in this 
+revision. 
+D05r06 2016-02-15 Accepted all changes. Comments from the team have been 
+addressed. It has been agreed to define a new bit in the 
+Flags field of the Fitness Machine Data characteristics 
+(Treadmill Data, Cross Trainer Data, etc.) that indicates the 
+presence of mandatory fields. This is in case a Data Record 
+needs to be sent in multiple notifications. In addition, a new 
+statement has been added to mandate the presence of the 
+Elapsed Time field when a Data Record is split into several 
+notifications. Read property has also been added to the 
+Fitness Machine Data characteristics to enable the reading 
+of the training summary at the end of a training session. 
+D05r07 2016-02-24 Accepted all changes. Mechanism to send a Data Record in 
+multiple notifications has been changed. The New Data 
+Record bit of the Flags field has been changed to More 
+Data with an other logic. 
+D05r08 2016-03-10 Accepted all changes. Comments from the team have been 
+addressed. This version of the Service is used as a 
+reference for the informal IOP (10-12 March 2016). 
+D05r09 2016-03-23 Accepted all changes. Comments from the team have been 
+addressed and updates discussed during the F2F have also 
+been made. 
+
+--- Page 3 ---
+ Fitness Machine Service  /  Service Specification 
+Bluetooth SIG Proprietary Page 3 of 78 
+Revision Number Date Comments 
+Training State characteristic has been renamed to Training 
+Status since this specification does not provide the state 
+diagram for training phases transitions. 
+Request Control procedure has been added to the Fitness 
+Machine Control Point and Control Not Permitted Result 
+Code has also been added to the list of Result Codes. 
+Spin Down procedure has been added to the Fitness 
+Machine Control Point. New Fitness Machine Status has 
+been added to address the requirement of the Spin Down 
+procedure. An appendix has also been created in order to 
+describe different scenarios related to this procedure. 
+Fitness Machine Feature characteristic definition has been 
+updated. In addition, the User Data Retention feature bit 
+has been added. 
+Clarifications have been made regarding the sending of a 
+Data Record in one or more notifications. 
+New Fitness Machine Status values have been added. 
+D05r10 2016-04-05 Accepted all changes. Clarified and updated the definition 
+of the Fitness Machine Status characteristic based on the 
+comments from the team. In addition, a new parameter has 
+been defined for the Stop or Pause procedure of the 
+Fitness Machine Control Point in order to identify whether it 
+is a stop or pause request. Document submitted for TE 
+review. 
+D05r11 2016-04-12 Accepted all changes. Comments from TE addressed. 
+Document resubmitted to TE for approval. 
+D05r12 2016-04-13 Accepted all changes. Minor updates from TE. Document 
+ready for BARB review. 
+D05r13 2016-05-03 Accepted all changes. Comments from the BARB have 
+been addressed and a few changes have also been made 
+in order to clarify the Request Control procedure. 
+The Spin Down Control Supported bit has been added to 
+the Fitness Machine Feature characteristic since it was 
+missing. 
+Two new Fitness Machine Status have been added (Indoor 
+Bike Simulation Parameters Changed and Wheel 
+Circumference Changed). The Op Code for Control 
+Permission Lost has been set to 0xFF for consistency. 
+Minor editorial changes in the appendix. 
+D09r00 2016-05-26 D05r13 has been approved by BARB.  
+Remaining comments have been addressed.  
+Document ready for BARB 0.9 review. 
+D09r01 2016-07-18 Addressed BARB comments and minor edits following 
+informal IOP in Neuchâtel. Accepted all changes and 
+
+--- Page 4 ---
+ Fitness Machine Service  /  Service Specification 
+Bluetooth SIG Proprietary Page 4 of 78 
+Revision Number Date Comments 
+resubmitted to the BARB. Set Targeted Cadence procedure 
+has also been added to the list of Fitness Machine Control 
+Point Procedure. 
+D10r00 2016-10-18 
+Minor edits and clarifications added following the IOP. 
+Contributors list has been updated. 
+Minor editorial changes suggested by test specification 
+editors (references and typos). 
+D10r01 2017-02-06 Updated copyright notice. 
+V1.0 2-17-02-14 Adopted by the Bluetooth SIG Board of Directors. 
+ 
+Contributors 
+Name Company 
+Nathan Zuber Precor 
+Tim Eskew Wahoo Fitness 
+Laurence Richardson Qualcomm Technologies, Inc. 
+Niclas Granqvist Polar 
+Guillaume Schatz Polar 
+Ben Roscoe Saris Cycling Group 
+Shwetha Mahadik Mindtree 
+Leif Aschehoug Nordic Semiconductor 
+Meghna Lav Apple Inc. 
+Ernest Chiang PAFERS Tech 
+Paul Yeh PAFERS Tech 
+ 
+  
+
+--- Page 5 ---
+ Fitness Machine Service  /  Service Specification 
+Bluetooth SIG Proprietary Page 5 of 78 
+Use of this specification is your acknowledgement that you agree to and will comply with the following notices and 
+disclaimers. You are advised to seek appropriate legal, engineering, and other professional advice regarding the use, 
+interpretation, and effect of this specification.  
+Use of Bluetooth specifications by members of Bluetooth SIG is governed by the membership and other related 
+agreements between Bluetooth SIG and its members, including those agreements posted on Bluetooth SIG’s website 
+located at www.bluetooth.com. Any use of this specification by a member that is not in compliance with the applicable 
+membership and other related agreements is prohibited and, among other things, may result in (i) termination of the 
+applicable agreements and (ii ) liability for infringement of the intellectual property rights of Bluetooth SIG and its 
+members. 
+Use of this specification by anyone who is not a member of Bluetooth SIG is prohibited and is an infringement of the 
+intellectual property rights of Bluetoot h SIG and its members. The furnishing of this specification does not grant any 
+license to any intellectual property of Bluetooth SIG or its members. THIS SPECIFICATION IS PROVIDED “AS IS” AND 
+BLUETOOTH SIG, ITS MEMBERS AND THEIR AFFILIATES MAKE NO REPRESEN TATIONS OR WARRANTIES AND 
+DISCLAIM ALL WARRANTIES, EXPRESS OR IMPLIED, INCLUDING ANY WARRANTIES OF MERCHANTABILITY, TITLE, 
+NON-INFRINGEMENT, FITNESS FOR ANY PARTICULAR PURPOSE, OR THAT THE CONTENT OF THIS SPECIFICATION IS 
+FREE OF ERRORS. For the avoidance of doubt, Bluetooth SIG has not made any search or investigation as to third parties 
+that may claim rights in or to any specifications or any intellectual property that may be required to implement any 
+specifications and it disclaims any obligation or duty to do so.  
+TO THE MAXIMUM EXTENT PERMITTED BY APPLICABLE LAW, BLUETOOTH SIG, ITS MEMBERS AND THEIR AFFILIATES 
+DISCLAIM ALL LIABILITY ARISING OUT OF OR RELATING TO USE OF THIS SPECIFICATION AND ANY INFORMATION 
+CONTAINED IN THIS SPECIFICATION, INCLUDING LOS T REVENUE, PROFITS, DATA OR PROGRAMS, OR BUSINESS 
+INTERRUPTION, OR FOR SPECIAL, INDIRECT, CONSEQUENTIAL, INCIDENTAL OR PUNITIVE DAMAGES, HOWEVER 
+CAUSED AND REGARDLESS OF THE THEORY OF LIABILITY, AND EVEN IF BLUETOOTH SIG, ITS MEMBERS OR THEIR 
+AFFILIATES HAVE BEEN ADVISED OF THE POSSIBILITY OF THE DAMAGES. 
+If this specification is a prototyping specification, it is solely for the purpose of developing and using prototypes to verify 
+the prototyping specifications at Bluetooth SIG sponsored IOP events. Prototy ping Specifications cannot be used to 
+develop products for sale or distribution and prototypes cannot be qualified for distribution. 
+Products equipped with Bluetooth wireless technology ("Bluetooth Products") and their combination, operation, use, 
+implementation, and distribution may be subject to regulatory controls under the laws and regulations of numerous 
+countries that regulate products that use wireless non -licensed spectrum. Examples include airline regulations, 
+telecommunications regulations, techno logy transfer controls and health and safety regulations. You are solely 
+responsible for complying with all applicable laws and regulations and for obtaining any and all required authorizations, 
+permits, or licenses in connection with your use of this specification and development, manufacture, and distribution of 
+Bluetooth Products. Nothing in this specification provides any information or assistance in connection with complying 
+with applicable laws or regulations or obtaining required authorizations, permits, or licenses.  
+Bluetooth SIG is not required to adopt any specification or portion thereof. If this specification is not the final version 
+adopted by Bluetooth SIG’s Board of Directors, it may not be adopted. Any specification adopted by Bluetooth SIG’ s 
+Board of Directors may be withdrawn, replaced, or modified at any time. Bluetooth SIG reserves the right to change or 
+alter final specifications in accordance with its membership and operating agreements.  
+Copyright © 2015–2017 by Bluetooth SIG, Inc. The Bluetooth word mark and logos are owned by Bluetooth SIG, Inc. All 
+copyrights in the Bluetooth Specifications themselves are owned by Apple Inc., Ericsson AB, Intel Corporation, Lenovo 
+(Singapore) Pte. Ltd., Microsoft Corporation, Nokia Corporation, an d Toshiba Corporation. Other third-party brands and 
+names are the property of their respective owners. 
+ 
+    
+
+--- Page 6 ---
+ Fitness Machine Service  /  Service Specification 
+Bluetooth SIG Proprietary Page 6 of 78 
+Contents 
+1 Introduction ........................................................................................................................................ 12 
+1.1 Conformance ................................................................................................................................ 12 
+1.2 Service Dependencies .................................................................................................................. 12 
+1.3 Bluetooth Core Specification Release Compatibility .................................................................... 12 
+1.4 GATT Sub-Procedure Requirements ........................................................................................... 12 
+1.5 Transport Dependencies .............................................................................................................. 13 
+1.6 Application Error Codes ................................................................................................................ 13 
+1.7 Byte Transmission Order .............................................................................................................. 13 
+2 Service Declaration............................................................................................................................ 14 
+3 Service Advertising Data .................................................................................................................. 15 
+3.1 Service Data AD Type .................................................................................................................. 15 
+3.1.1 Flags Field ............................................................................................................................... 15 
+3.1.2 Fitness Machine Type Field ..................................................................................................... 15 
+3.2 Byte Ordering ................................................................................................................................ 16 
+4 Service Characteristics ..................................................................................................................... 17 
+4.1 Data Record Definition.................................................................................................................. 18 
+4.2 Training Session Definition ........................................................................................................... 19 
+4.3 Fitness Machine Feature .............................................................................................................. 19 
+4.3.1 Characteristic Behavior ........................................................................................................... 19 
+4.3.1.1 Fitness Machine Features Field ..................................................................................... 20 
+4.3.1.2 Target Setting Features Field......................................................................................... 21 
+4.4 Treadmill Data Characteristics ..................................................................................................... 23 
+4.4.1 Characteristic Behavior ........................................................................................................... 23 
+4.4.1.1 Flags Field ...................................................................................................................... 23 
+4.4.1.2 Instantaneous Speed Field ............................................................................................ 24 
+4.4.1.3 Average Speed Field ...................................................................................................... 24 
+4.4.1.4 Total Distance Field ....................................................................................................... 24 
+4.4.1.5 Inclination Field .............................................................................................................. 24 
+4.4.1.6 Ramp Angle Setting Field .............................................................................................. 25 
+4.4.1.7 Positive Elevation Gain and Negative Elevation Gain Field Pair ................................... 25 
+4.4.1.8 Instantaneous Pace Field............................................................................................... 25 
+4.4.1.9 Average Pace Field ........................................................................................................ 25 
+4.4.1.10 Total Energy Field .......................................................................................................... 25 
+4.4.1.11 Energy per Hour Field .................................................................................................... 26 
+4.4.1.12 Energy per Minute Field ................................................................................................. 26 
+4.4.1.13 Heart Rate Field ............................................................................................................. 26 
+4.4.1.14 Metabolic Equivalent Field ............................................................................................. 26 
+4.4.1.15 Elapsed Time Field ........................................................................................................ 26 
+
+--- Page 7 ---
+ Fitness Machine Service  /  Service Specification 
+Bluetooth SIG Proprietary Page 7 of 78 
+4.4.1.16 Remaining Time Field .................................................................................................... 27 
+4.4.1.17 Force on Belt Field ......................................................................................................... 27 
+4.4.1.18 Power Output Field ........................................................................................................ 27 
+4.5 Cross Trainer Data ....................................................................................................................... 27 
+4.5.1 Characteristic Behavior ........................................................................................................... 27 
+4.5.1.1 Flags Field ...................................................................................................................... 28 
+4.5.1.2 Instantaneous Speed Field ............................................................................................ 29 
+4.5.1.3 Average Speed Field ...................................................................................................... 29 
+4.5.1.4 Total Distance Field ....................................................................................................... 29 
+4.5.1.5 Step per Minute Field ..................................................................................................... 29 
+4.5.1.6 Average Step Rate Field ................................................................................................ 29 
+4.5.1.7 Stride Count Field .......................................................................................................... 30 
+4.5.1.8 Positive Elevation Gain and Negative Elevation Gain Field Pair ................................... 30 
+4.5.1.9 Inclination Field .............................................................................................................. 30 
+4.5.1.10 Ramp Angle Setting Field .............................................................................................. 30 
+4.5.1.11 Resistance Level Field ................................................................................................... 30 
+4.5.1.12 Instantaneous Power Field............................................................................................. 30 
+4.5.1.13 Average Power Field ...................................................................................................... 31 
+4.5.1.14 Total Energy Field .......................................................................................................... 31 
+4.5.1.15 Energy per Hour Field .................................................................................................... 31 
+4.5.1.16 Energy per Minute Field ................................................................................................. 31 
+4.5.1.17 Heart Rate Field ............................................................................................................. 31 
+4.5.1.18 Metabolic Equivalent Field ............................................................................................. 32 
+4.5.1.19 Elapsed Time Field ........................................................................................................ 32 
+4.5.1.20 Remaining Time Field .................................................................................................... 32 
+4.6 Step Climber Data ........................................................................................................................ 32 
+4.6.1 Characteristic Behavior ........................................................................................................... 32 
+4.6.1.1 Flags Field ...................................................................................................................... 32 
+4.6.1.2 Floors Field..................................................................................................................... 33 
+4.6.1.3 Step Count Field ............................................................................................................ 33 
+4.6.1.4 Step per Minute Field ..................................................................................................... 34 
+4.6.1.5 Average Step Rate Field ................................................................................................ 34 
+4.6.1.6 Positive Elevation Gain Field ......................................................................................... 34 
+4.6.1.7 Total Energy Field .......................................................................................................... 34 
+4.6.1.8 Energy per Hour Field .................................................................................................... 34 
+4.6.1.9 Energy per Minute Field ................................................................................................. 34 
+4.6.1.10 Heart Rate Field ............................................................................................................. 35 
+4.6.1.11 Metabolic Equivalent Field ............................................................................................. 35 
+4.6.1.12 Elapsed Time Field ........................................................................................................ 35 
+
+--- Page 8 ---
+ Fitness Machine Service  /  Service Specification 
+Bluetooth SIG Proprietary Page 8 of 78 
+4.6.1.13 Remaining Time Field .................................................................................................... 35 
+4.7 Stair Climber Data ........................................................................................................................ 35 
+4.7.1 Characteristic Behavior ........................................................................................................... 35 
+4.7.1.1 Flags Field ...................................................................................................................... 36 
+4.7.1.2 Floors Field..................................................................................................................... 36 
+4.7.1.3 Step per Minute Rate Field ............................................................................................ 37 
+4.7.1.4 Average Step Rate Field ................................................................................................ 37 
+4.7.1.5 Positive Elevation Gain Field ......................................................................................... 37 
+4.7.1.6 Stride Count Field .......................................................................................................... 37 
+4.7.1.7 Total Energy Field .......................................................................................................... 37 
+4.7.1.8 Energy per Hour Field .................................................................................................... 37 
+4.7.1.9 Energy per Minute Field ................................................................................................. 38 
+4.7.1.10 Heart Rate Field ............................................................................................................. 38 
+4.7.1.11 Metabolic Equivalent Field ............................................................................................. 38 
+4.7.1.12 Elapsed Time Field ........................................................................................................ 38 
+4.7.1.13 Remaining Time Field .................................................................................................... 38 
+4.8 Rower Data ................................................................................................................................... 38 
+4.8.1 Characteristic Behavior ........................................................................................................... 39 
+4.8.1.1 Flags Field ...................................................................................................................... 39 
+4.8.1.2 Stroke Rate Field ........................................................................................................... 40 
+4.8.1.3 Stroke Count Field ......................................................................................................... 40 
+4.8.1.4 Average Stroke Rate Field ............................................................................................. 40 
+4.8.1.5 Total Distance Field ....................................................................................................... 40 
+4.8.1.6 Instantaneous Pace Field............................................................................................... 40 
+4.8.1.7 Average Pace Field ........................................................................................................ 41 
+4.8.1.8 Instantaneous Power Field............................................................................................. 41 
+4.8.1.9 Average Power Field ...................................................................................................... 41 
+4.8.1.10 Resistance Level Field ................................................................................................... 41 
+4.8.1.11 Total Energy Field .......................................................................................................... 41 
+4.8.1.12 Energy per Hour Field .................................................................................................... 41 
+4.8.1.13 Energy per Minute Field ................................................................................................. 42 
+4.8.1.14 Heart Rate Field ............................................................................................................. 42 
+4.8.1.15 Metabolic Equivalent Field ............................................................................................. 42 
+4.8.1.16 Elapsed Time Field ........................................................................................................ 42 
+4.8.1.17 Remaining Time Field .................................................................................................... 42 
+4.9 Indoor Bike Data ........................................................................................................................... 42 
+4.9.1 Characteristic Behavior ........................................................................................................... 43 
+4.9.1.1 Flags Field ...................................................................................................................... 43 
+4.9.1.2 Instantaneous Speed Field ............................................................................................ 44 
+
+--- Page 9 ---
+ Fitness Machine Service  /  Service Specification 
+Bluetooth SIG Proprietary Page 9 of 78 
+4.9.1.3 Average Speed Field ...................................................................................................... 44 
+4.9.1.4 Instantaneous Cadence Field ........................................................................................ 44 
+4.9.1.5 Average Cadence Field .................................................................................................. 44 
+4.9.1.6 Total Distance Field ....................................................................................................... 44 
+4.9.1.7 Resistance Level ............................................................................................................ 44 
+4.9.1.8 Instantaneous Power ..................................................................................................... 45 
+4.9.1.9 Average Power ............................................................................................................... 45 
+4.9.1.10 Total Energy Field .......................................................................................................... 45 
+4.9.1.11 Energy per Hour Field .................................................................................................... 45 
+4.9.1.12 Energy per Minute Field ................................................................................................. 45 
+4.9.1.13 Heart Rate Field ............................................................................................................. 46 
+4.9.1.14 Metabolic Equivalent Field ............................................................................................. 46 
+4.9.1.15 Elapsed Time Field ........................................................................................................ 46 
+4.9.1.16 Remaining Time Field .................................................................................................... 46 
+4.10 Training Status .............................................................................................................................. 46 
+4.10.1 Characteristic Behavior ........................................................................................................... 47 
+4.10.1.1 Flags Field ...................................................................................................................... 47 
+4.10.1.2 Training Status Field ...................................................................................................... 47 
+4.10.1.3 Training Status String Field ............................................................................................ 48 
+4.11 Supported Speed Range .............................................................................................................. 48 
+4.11.1 Characteristic Behavior ........................................................................................................... 48 
+4.12 Supported Inclination Range ........................................................................................................ 49 
+4.12.1 Characteristic Behavior ........................................................................................................... 49 
+4.13 Supported Resistance Level Range ............................................................................................. 49 
+4.13.1 Characteristic Behavior ........................................................................................................... 49 
+4.14 Supported Power Range .............................................................................................................. 49 
+4.14.1 Characteristic Behavior ........................................................................................................... 49 
+4.15 Supported Heart Rate Range ....................................................................................................... 49 
+4.15.1 Characteristic Behavior ........................................................................................................... 50 
+4.16 Fitness Machine Control Point ...................................................................................................... 50 
+4.16.1 Fitness Machine Control Point Procedure Requirements ....................................................... 50 
+4.16.2 Fitness Machine Control Point Behavioral Description ........................................................... 55 
+4.16.2.1 Request Control Procedure............................................................................................ 55 
+4.16.2.2 Reset Procedure ............................................................................................................ 55 
+4.16.2.3 Set Target Speed Procedure ......................................................................................... 56 
+4.16.2.4 Set Target Inclination Procedure ................................................................................... 56 
+4.16.2.5 Set Target Resistance Level Procedure ........................................................................ 56 
+4.16.2.6 Set Target Power Procedure.......................................................................................... 57 
+4.16.2.7 Set Target Heart Rate Procedure .................................................................................. 57 
+
+--- Page 10 ---
+ Fitness Machine Service  /  Service Specification 
+Bluetooth SIG Proprietary Page 10 of 78 
+4.16.2.8 Start or Resume Procedure ........................................................................................... 57 
+4.16.2.9 Stop or Pause Procedure ............................................................................................... 58 
+4.16.2.10 Set Targeted Expended Energy Procedure .................................................................. 58 
+4.16.2.11 Set Targeted Number of Steps Procedure .................................................................... 59 
+4.16.2.12 Set Targeted Number of Strides Procedure .................................................................. 59 
+4.16.2.13 Set Targeted Distance Procedure ................................................................................. 59 
+4.16.2.14 Set Targeted Training Time Procedure ......................................................................... 60 
+4.16.2.15 Set Targeted Time in Two Heart Rate Zones Procedure ............................................. 60 
+4.16.2.16 Set Targeted Time in Three Zone Heart Rate Procedure ............................................. 61 
+4.16.2.17 Set Targeted Time in Five Zone Heart Rate Procedure ............................................... 61 
+4.16.2.18 Set Indoor Bike Simulation Parameters Procedure ...................................................... 62 
+4.16.2.19 Set Wheel Circumference Procedure ........................................................................... 62 
+4.16.2.20 Spin Down Control Procedure ....................................................................................... 63 
+4.16.2.21 Set Targeted Cadence Procedure ................................................................................ 64 
+4.16.2.22 Procedure Complete ..................................................................................................... 64 
+4.16.3 General Error Handling Procedures ........................................................................................ 66 
+4.16.4 Procedure Timeout .................................................................................................................. 66 
+4.17 Fitness Machine Status ................................................................................................................ 66 
+4.17.1 Characteristic Behavior ........................................................................................................... 68 
+4.18 Requirements for Time-Sensitive Data ......................................................................................... 69 
+4.19 Transmission of a Data Record .................................................................................................... 69 
+5 SDP Interoperability........................................................................................................................... 70 
+6 Acronyms and Abbreviations ........................................................................................................... 71 
+7 References .......................................................................................................................................... 72 
+Appendix 1 Transmission of a Data Record (INFORMATIVE) ......................................................... 73 
+App 1.1 Sending Data Record in a Single Notification ....................................................................... 73 
+App 1.2 Sending Data Record Split into Multiple Notifications ........................................................... 73 
+Appendix 2 Fitness Machine Control Point Message Sequence Charts (INFORMATIVE)  ............ 74 
+App 2.1 Control Procedure ................................................................................................................. 74 
+App 2.1. Error Handling – Procedure Already In Progress .................................................................. 75 
+Appendix 3 Spin Down Procedure Examples (INFORMATIVE) ....................................................... 76 
+App 3.1 Spin Down Procedure – Requested by the Server ............................................................... 76 
+App 3.2 Spin Down Procedure – Initiated by the Client with Error ..................................................... 77 
+App 3.3 Spin Down Procedure – Ignored by the Client ...................................................................... 78 
+ 
+
+--- Page 11 ---
+ Fitness Machine Service  /  Service Specification 
+Bluetooth SIG Proprietary Page 11 of 78 
+Document Terminology 
+The Bluetooth SIG has adopted portions of the IEEE Standards Style Manual, which dictates use of the 
+words “shall’’, “must”, “will”, “should’’, “may’’, and “can’’ in the development of documentation, as 
+follows: 
+• The word “shall” is used to indicate mandatory requirements strictly to be followed in order to 
+conform to the standard and from which no deviation is permitted (shall equals is required to).  
+• The use of the word “must” is deprecated and shall not be used when stating mandatory 
+requirements; must is used only to describe unavoidable situations. 
+• The use of the word “will” is deprecated and shall not be used when stating mandatory 
+requirements; will is only used in statements of fact. 
+• The word “should” is used to indicate that among several possibilities one is recommended as 
+particularly suitable, without mentioning or excluding others; or that a certain course of action is 
+preferred but not necessarily required; or that (in the negative form) a certain course of action is 
+deprecated but not prohibited (should equals is recommended that). 
+• The word “may” is used to indicate a course of action permissible within the limits of the standard 
+(may equals is permitted). 
+• The word “can” is used for statements of possibility and capability, whether material, physi cal, or 
+causal (can equals is able to). 
+  
+
+--- Page 12 ---
+ Fitness Machine Service  /  Service Specification 
+Bluetooth SIG Proprietary Page 12 of 78 
+1 Introduction 
+The Fitness Machine Service (FTMS) exposes training-related data in the sports and fitness environment, 
+which allows a Client to collect training data while a user is exercising with a fitness machine (Server). 
+The service also exposes the Training Status characteristic (See Section 4.10) in order to provide 
+feedback to the Client about training status (e.g., warming up, low or high intensity phase, etc.) In 
+addition, the service may also expose the Fitness Machine Status characteristic to send information to the 
+Client about the status of the machine (e.g., started by the user, stopped by the user, etc.) 
+The Fitness Machine Control Point may also be exposed by the Server in order to provide  a mechanism 
+to remotely control a fitness machine (e.g., start, stop, increase the speed, etc.) 
+The types of fitness machines that are currently supported are listed below: 
+• Treadmill 
+• Cross Trainer 
+• Step Climber 
+• Stair Climber 
+• Rower 
+• Indoor Bike 
+1.1 Conformance 
+If a device claims conformance to this service, all capabilities indicated as mandatory for this service shall 
+be supported in the specified manner (process-mandatory). This also applies for all optional and 
+conditional capabilities for which support is indicated. All mandatory capabilities, and optional and 
+conditional capabilities for which support is indicated are subject to verification as part of the Bluetooth 
+qualification program. 
+1.2 Service Dependencies 
+This service is not dependent upon any other services. 
+1.3 Bluetooth Core Specification Release Compatibility 
+This specification is compatible with any of the following: 
+ Bluetooth Core Specification 4.0 or later [1]. 
+1.4 GATT Sub-Procedure Requirements 
+Requirements in this section represent a minimum set of requirements for a Server. Other GATT sub-
+procedures may be used if supported by both Client and Server. 
+Table 1.1 summarizes additional GATT sub-procedure requirements beyond those required by all GATT 
+Servers. 
+
+--- Page 13 ---
+ Fitness Machine Service  /  Service Specification 
+Bluetooth SIG Proprietary Page 13 of 78 
+GATT Sub-Procedure Requirements 
+Write Characteristic Value M 
+Notification M 
+Indication C.1 
+Read Long O 
+Table 1.1: GATT Sub-procedure Requirements 
+C.1: Mandatory if the Fitness Machine Control Point is supported; otherwise Optional. 
+1.5 Transport Dependencies 
+There are no transport restrictions imposed by this service specification. 
+Where the term BR/EDR is used throughout this document, this also includes the optional use of AMP. 
+1.6 Application Error Codes 
+This service does not define any Attribute Protocol Application Error codes. 
+1.7 Byte Transmission Order 
+All characteristics used with this service shall be transmitted with the least significant octet first (i.e., little 
+endian). The least significant octet is identified in the characteristic definitions on the Bluetooth SIG 
+Assigned Numbers webpage [2]. 
+
+--- Page 14 ---
+ Fitness Machine Service  /  Service Specification 
+Bluetooth SIG Proprietary Page 14 of 78 
+2 Service Declaration 
+The Fitness Machine Service is recommended to be instantiated as a «Primary Service». 
+The service UUID shall be set to «Fitness Machine Service» as defined on the Bluetooth SIG Assigned 
+Numbers webpage [2]. 
+
+--- Page 15 ---
+ Fitness Machine Service  /  Service Specification 
+Bluetooth SIG Proprietary Page 15 of 78 
+3 Service Advertising Data 
+This section defines the advertising data requirements for this service. 
+3.1 Service Data AD Type 
+This section describes the contents of and requirements for the Service Data AD Type that enables a 
+Client to determine the type of fitness machine (Server) that is advertising. This is to avoid initiating a 
+connection between Servers and Clients that do not support that particular type of fitness machine 
+(Server). 
+As permitted in the Core Specification and the Core Specification Supplement [1], the Service Data AD 
+Type may also be present in the Extended Inquiry Response (EIR). 
+The definition of the Service Data AD Type is shown in Table 3.1. 
+Refer to Section 3.2 for details regarding byte ordering. 
+Service Data AD Type Field Data 
+Type 
+Size 
+(octets) 
+Requirement 
+Service Data AD Type (See [3]) UINT8 1 M 
+Fitness Machine Service UUID (See [2]) UINT16 2 M 
+Flags (See Section 3.1.1) UINT8 1 M 
+Fitness Machine Type (See Section 3.1.2) UINT16 2 M 
+Table 3.1: Service Data AD Type 
+3.1.1 Flags Field 
+The Flags field shall be included in the Service Data AD Type. 
+Bit Definition 
+0 
+Fitness Machine Available: 
+0: False 
+1: True 
+1-7 Reserved for Future Use 
+Table 3.2: Flags Field 
+3.1.2 Fitness Machine Type Field 
+The Fitness Machine Type field shall be included in the Service Data AD Type. 
+When a bit is set to 1 (True) in the Fitness Machine Type field, the Server supports the associated 
+feature. If the Server does not support the relevant feature, the associated feature bit shall be set to 0 
+(False), as defined in Table 3.3: 
+Bit Number Definition 
+0 Treadmill Supported 
+
+--- Page 16 ---
+ Fitness Machine Service  /  Service Specification 
+Bluetooth SIG Proprietary Page 16 of 78 
+Bit Number Definition 
+0: False 
+1: True 
+1 
+Cross Trainer Supported 
+0: False 
+1: True 
+2 
+Step Climber Supported 
+0: False 
+1: True 
+3 
+Stair Climber Supported 
+0: False 
+1: True 
+4 
+Rower Supported 
+0: False 
+1: True 
+5 
+Indoor Bike Supported 
+0: False 
+1: True 
+6 – 15 Reserved for Future Use 
+Table 3.3: Fitness Machine Type Field 
+3.2 Byte Ordering 
+Where characteristics and descriptors are comprised of multiple bytes (shown in several tables within this 
+document), the Least Significant Octet (LSO) is defined as the eight low-numbered bits (i.e., bits 0 to 7) of 
+the topmost field in the tables. The Most Significant Octet (MSO) is defined as the high-numbered bits of 
+the bottommost field in the tables. 
+
+--- Page 17 ---
+ Fitness Machine Service  /  Service Specification 
+Bluetooth SIG Proprietary Page 17 of 78 
+4 Service Characteristics 
+The following characteristics are exposed in the Fitness Machine Service. 
+Only one instance of each characteristic is permitted within this service. 
+Where a characteristic can be notified or indicated, a Client Characteristic Configuration descriptor shall 
+be included in that characteristic as required by the Core Specification [1]. 
+Characteristic 
+Name Requirement Mandatory 
+Properties 
+Optional 
+Properties 
+Security Permissions 
+Fitness 
+Machine 
+Feature 
+M Read N/A None 
+Treadmill Data O Notify N/A None 
+Cross Trainer 
+Data 
+O Notify N/A None 
+Step Climber 
+Data 
+O Notify N/A None 
+Stair Climber 
+Data 
+O Notify N/A None 
+Rower Data O Notify N/A None 
+Indoor Bike 
+Data 
+O Notify N/A None 
+Training Status O Read,  
+Notify 
+N/A None 
+Supported 
+Speed Range 
+C.1 Read N/A None 
+Supported 
+Inclination 
+Range 
+C.2 Read N/A None 
+Supported 
+Resistance 
+Level Range 
+C.3 Read N/A None 
+Supported 
+Power Range 
+C.4 Read N/A None 
+Supported 
+Heart Rate 
+Range 
+C.5 Read N/A None 
+Fitness 
+Machine 
+Control Point 
+O Write, 
+Indicate 
+N/A Encryption 
+
+--- Page 18 ---
+ Fitness Machine Service  /  Service Specification 
+Bluetooth SIG Proprietary Page 18 of 78 
+Characteristic 
+Name Requirement Mandatory 
+Properties 
+Optional 
+Properties 
+Security Permissions 
+Fitness 
+Machine 
+Status 
+C.6 Notify N/A None 
+Table 4.1: Requirements for each FTMS Characteristic 
+C.1:  Mandatory if the Speed Target Setting feature is supported; otherwise Optional. 
+C.2: Mandatory if the Inclination Target Setting feature is supported; otherwise Optional. 
+C.3: Mandatory if the Resistance Target Setting feature is supported; otherwise Optional. 
+C.4: Mandatory if the Power Target Setting feature is supported; otherwise Optional. 
+C.5:  Mandatory if the Heart Rate Target Setting feature is supported; otherwise Optional. 
+C.6: Mandatory if the Fitness Machine Control Point is supported; otherwise Optional. 
+ 
+Notes: 
+Properties not listed as Mandatory or Optional are excluded for this version of the service. 
+4.1 Data Record Definition 
+A Data Record consists of multiple training-related data recorded at the same time (or within the same 
+sampling period) that need to be transmitted to a Client. 
+In the context of a treadmill, a Data Record will be sent with one or more notifications of the Treadmill 
+Data characteristic defined in Section 4.4. 
+In the context of a cross trainer, a Data Record will be sent with one or more notifications of the Cross 
+Trainer Data characteristic defined in Section 4.5. 
+In the context of a step climber, a Data Record will be sent with one or more notifications of the Step 
+Climber Data characteristic defined in Section 4.6. 
+In the context of a stair climber, a Data Record will be sent with one or more notifications of the Stair 
+Climber Data characteristic defined in Section 4.7. 
+In the context of a rower, a Data Record will be sent with one or more notifications of the Rower Data 
+characteristic defined in Section 4.8. 
+In the context of an indoor bike, a Data Record will be sent with one or more notifications of the Indoor 
+Bike Data characteristic defined in Section 4.9. 
+For devices that support the low energy feature of Bluetooth, if a Data Record exceeds the ATT_MTU 
+size, it shall be transmitted in several notifications. Refer to Section 4.18 for additional requirements on 
+time-sensitive data. 
+For BR/EDR, this restriction does not exist due to a larger MTU size. 
+See also Appendix 1 for more information. 
+
+--- Page 19 ---
+ Fitness Machine Service  /  Service Specification 
+Bluetooth SIG Proprietary Page 19 of 78 
+4.2 Training Session Definition 
+In the context of this service, a Training Session is started when the user either presses the start button 
+on the UI of the Server or when the Start or Resume procedure of the Fitness Machine Control Point is 
+initiated (see Section 4.16.2.8). The Training Session lasts until the user presses either the stop button on 
+the UI of the Server or when the Stop or Pause procedure of the Fitness Machine Control Point is initiated 
+(see Section 4.16.2.9). Refer to Section 4.10.1 for Server requirements if the Training Status 
+characteristic is exposed and how the Server reports Training Session changes to the Client.  
+If the Elapsed Time feature is supported by the Server, the Elapsed Time field that may be present in a 
+Data Record shall represent the time since the beginning of a Training Session. For display purposes, the 
+Client may calculate the time for each training phase by calculating the difference between the Elapsed 
+Time field value and the time at which a Fitness Machine Status characteristic has been notified (see 
+Section 4.10). 
+4.3 Fitness Machine Feature 
+The Fitness Machine Feature characteristic shall be used to describe the supported features of the 
+Server. 
+The Fitness Machine Feature characteristic exposes which optional features are supported by the Server 
+implementation. 
+The structure of the characteristic is defined below: 
+LSO         MSO 
+ Fitness Machine Features Target Setting Features 
+Octet Order LSO...MSO LSO...MSO 
+Data type 32bit 32bit 
+Size 4 octets 4 octets 
+Units None None 
+Table 4.2: Structure of the Fitness Machine Feature characteristic 
+Reserved for Future Use (RFU) bits in the Fitness Machine Feature characteristic value shall be set to 0. 
+4.3.1 Characteristic Behavior 
+When read, the Fitness Machine Feature characteristic returns a value containing two fields: Fitness 
+Machine Features and Target Setting Features. Each field is a bit field that may be used by a Client to 
+determine the supported features of the Server as defined below. 
+The bits of the Fitness Machine Feature characteristic may either be static for the lifetime of the device 
+(i.e., static permanently or until Service Changed is indicated) or guaranteed to be static only during a 
+connection. Although all defined bits in this version of this specification are required to be static during the 
+lifetime of a device, it is possible that some future bits will be defined as being static only during a 
+connection. 
+
+--- Page 20 ---
+ Fitness Machine Service  /  Service Specification 
+Bluetooth SIG Proprietary Page 20 of 78 
+4.3.1.1 Fitness Machine Features Field 
+When a bit is set to 1 (True)  in the Fitness Machine Features field , the Server supports the associated 
+feature. If the Server does not support the relevant feature, the associated feature bit shall be set to 0 
+(False), as defined in the following table: 
+Bit Number Definition 
+0 Average Speed Supported 
+0 = False 
+1 = True 
+1 Cadence Supported 
+0 = False 
+1 = True 
+2 Total Distance Supported 
+0 = False 
+1 = True 
+3 Inclination Supported 
+0 = False 
+1 = True 
+4 Elevation Gain Supported 
+0 = False 
+1 = True 
+5 Pace Supported 
+0 = False 
+1 = True 
+6 Step Count Supported 
+0 = False 
+1 = True 
+7 Resistance Level Supported 
+0 = False 
+1 = True 
+8 Stride Count Supported 
+0 = False 
+1 = True 
+9 Expended Energy Supported 
+0 = False 
+1 = True 
+10 Heart Rate Measurement Supported 
+0 = False 
+1 = True 
+11 Metabolic Equivalent Supported 
+
+--- Page 21 ---
+ Fitness Machine Service  /  Service Specification 
+Bluetooth SIG Proprietary Page 21 of 78 
+0 = False 
+1 = True 
+12 Elapsed Time Supported 
+0 = False 
+1 = True 
+13 Remaining Time Supported 
+0 = False 
+1 = True 
+14 Power Measurement Supported 
+0 = False 
+1 = True 
+15 Force on Belt and Power Output Supported 
+0 = False 
+1 = True 
+16 User Data Retention Supported 
+0 = False 
+1 = True 
+17-31 Reserved for Future Use 
+Table 4.3: Definition of the bits of the Fitness Machine Features field 
+4.3.1.2 Target Setting Features Field 
+When a bit is set to 1 (True) in the Target Setting Features field, the Server supports the associated control 
+related feature. If the Server does not support the relevant control related feature, the associated feature 
+bit shall be set to 0 (False), as defined in the following table: 
+Bit Number Definition 
+0 Speed Target Setting Supported 
+0 = False 
+1 = True 
+1 Inclination Target Setting Supported 
+0 = False 
+1 = True 
+2 Resistance Target Setting Supported 
+0 = False 
+1 = True 
+3 Power Target Setting Supported 
+0 = False 
+1 = True 
+4 Heart Rate Target Setting Supported 
+0 = False 
+
+--- Page 22 ---
+ Fitness Machine Service  /  Service Specification 
+Bluetooth SIG Proprietary Page 22 of 78 
+1 = True 
+5 Targeted Expended Energy Configuration Supported 
+0 = False 
+1 = True 
+6 Targeted Step Number Configuration Supported 
+0 = False 
+1 = True 
+7 Targeted Stride Number Configuration Supported 
+0 = False 
+1 = True 
+8 Targeted Distance Configuration Supported 
+0 = False 
+1 = True 
+9 Targeted Training Time Configuration Supported 
+0 = False 
+1 = True 
+10 Targeted Time in Two Heart Rate Zones Configuration Supported 
+0 = False 
+1 = True 
+11 Targeted Time in Three Heart Rate Zones Configuration Supported 
+0 = False 
+1 = True 
+12 Targeted Time in Five Heart Rate Zones Configuration Supported 
+0 = False 
+1 = True 
+13 Indoor Bike Simulation Parameters Supported 
+0 = False 
+1 = True 
+14 Wheel Circumference Configuration Supported 
+0 = False 
+1 = True 
+15 Spin Down Control Supported 
+0 = False 
+1 = True 
+16 Targeted Cadence Configuration Supported 
+0 = False 
+1 = True 
+17-31 Reserved for Future Use 
+Table 4.4: Definition of the bits of the Target Setting Features field 
+
+--- Page 23 ---
+ Fitness Machine Service  /  Service Specification 
+Bluetooth SIG Proprietary Page 23 of 78 
+4.4 Treadmill Data Characteristics 
+The Treadmill Data characteristic is used to send training-related data to the Client from a treadmill 
+(Server). Included in the characteristic value is a Flags field (for showing the presence of optional fields) 
+and depending upon the contents of the Flags field, it may include one or more optional fields as defined 
+on the Bluetooth SIG Assigned Numbers webpage [2]. 
+4.4.1 Characteristic Behavior 
+When the Treadmill Data characteristic is configured for notification via the Client Characteristic 
+Configuration descriptor and training-related data is available, this characteristic shall be notified. The 
+Server should notify this characteristic at a regular interval, typically once per second while in a 
+connection and the interval is not configurable by the Client. 
+For low energy, all the fields of this characteristic cannot be present simultaneously if using a default 
+ATT_MTU size. Refer to Sections 4.1 and 4.19 for additional requirements on the transmission of a Data 
+Record in multiple notifications. Refer to Section 4.18 for additional requirements on time-sensitive data. 
+For BR/EDR, this restriction does not exist due to a larger MTU size. 
+4.4.1.1 Flags Field 
+The Flags field shall be included in the Treadmill Data characteristic. 
+Reserved for Future Use (RFU) bits in the Flags fields shall be set to 0. 
+The bits of the Flags field and relationship to bits in the Fitness Machine Feature characteristic are shown 
+in Table 4.5. 
+Flags Bit Name When Set to 0 When Set to 1 Corresponding Fitness 
+Machine Feature Support bit 
+(see Section 4.3) 
+More Data (bit 0), see Section 
+4.4.1.2 and 4.19. 
+Instantaneous 
+Speed field 
+present 
+Instantaneous 
+Speed field not 
+present 
+None 
+Average Speed Present (bit 
+1), see Section 4.4.1.3.  
+Corresponding 
+field not present 
+Corresponding 
+field present 
+Average Speed Supported (bit 0) 
+Total Distance Present (bit 2), 
+see Section 4.4.1.4. 
+Corresponding 
+field not present 
+Corresponding 
+field present 
+Total Distance Supported (bit 2) 
+Inclination and Ramp Angle 
+Setting Present (bit 3), see 
+Sections 4.4.1.5 and 4.4.1.6. 
+Corresponding 
+field not present 
+Corresponding 
+field present 
+Inclination Supported (bit 3) 
+Elevation Gain Present (bit 4), 
+see Section 4.4.1.7. 
+Corresponding 
+fields not 
+present 
+Corresponding 
+fields present 
+Elevation Gain Supported (bit 4) 
+Instantaneous Pace Present 
+(bit 5), see Section 4.4.1.8. 
+Corresponding 
+field not present 
+Corresponding 
+field present 
+Pace Supported (bit 5) 
+Average Pace Present (bit 6), 
+see Section 4.4.1.9. 
+Corresponding 
+field not present 
+Corresponding 
+field present 
+Pace Supported (bit 5) 
+
+--- Page 24 ---
+ Fitness Machine Service  /  Service Specification 
+Bluetooth SIG Proprietary Page 24 of 78 
+Expended Energy Present (bit 
+7), see Sections 4.4.1.10, 
+4.4.1.11 and 4.4.1.12. 
+Corresponding 
+fields not 
+present 
+Corresponding 
+fields present 
+Expended Energy Supported (bit 
+9) 
+Heart Rate Present (bit 8), see 
+Section 4.4.1.13. 
+Corresponding 
+field not present 
+Corresponding 
+field present 
+Heart Rate Measurement 
+Supported (bit 10) 
+Metabolic Equivalent Present 
+(bit 9), see Section 4.4.1.14. 
+Corresponding 
+field not present 
+Corresponding 
+field present 
+Metabolic Equivalent Supported 
+(bit 11) 
+Elapsed Time Present (bit 10), 
+see Section 4.4.1.15. 
+Corresponding 
+field not present 
+Corresponding 
+field present 
+Elapsed Time Supported (bit 12) 
+Remaining Time Present (bit 
+11), see Section 4.4.1.16. 
+Corresponding 
+field not present 
+Corresponding 
+field present 
+Remaining Time Supported (bit 
+13) 
+Force on Belt and Power 
+Output Present (bit 12), see 
+Sections 4.4.1.17 and 
+4.4.1.18. 
+Corresponding 
+fields not 
+present 
+Corresponding 
+fields present 
+Force on Belt and Power Output 
+Supported (bit 15) 
+Table 4.5: Bit Definitions for the Treadmill Data Characteristic 
+4.4.1.2 Instantaneous Speed Field 
+The Instantaneous Speed field shall be included in the treadmill-related Data Record. If the Data Record 
+is split into several notifications of the Treadmill Data characteristic, this field shall only be included in the 
+Treadmill Data characteristic when the More Data bit of the Flags field is set to 0. Refer to Section 4.19 
+for additional information related to the transmission of a Data Record.  
+The Instantaneous Speed field represents the instantaneous speed of the belt of the treadmill. 
+4.4.1.3 Average Speed Field 
+The Average Speed field may be included in the Treadmill Data characteristic if the device supports the 
+Average Speed feature (see Table 4.5). 
+The Average Speed field represents the average speed since the beginning of the training session. 
+4.4.1.4 Total Distance Field 
+The Total Distance field may be included in the Treadmill Data characteristic if the device supports the 
+Total Distance feature (see Table 4.5). 
+The Total Distance field represents the total distance reported by the Server since the beginning of the 
+training session. 
+4.4.1.5 Inclination Field 
+The Inclination field may be included in the Treadmill Data characteristic if the device supports the 
+Inclination feature (see Table 4.5). 
+The Inclination field represents the current inclination of the Server. A positive value means that the user 
+feels as if they are going uphill and a negative value means that the user feels as if they are going 
+downhill. 
+
+--- Page 25 ---
+ Fitness Machine Service  /  Service Specification 
+Bluetooth SIG Proprietary Page 25 of 78 
+If this field has to be present (i.e., if the Inclination and Ramp Angle Setting Present bit of the Flags field is 
+set to 1) but the Server does not support the calculation of the Inclination, the Server shall use the special 
+value 0x7FFF (i.e., decimal value of 32767 in SINT16 format), which means ‘Data Not Available’. 
+4.4.1.6 Ramp Angle Setting Field 
+The Ramp Angle Setting field may be included in the Treadmill Data characteristic if the device supports 
+the Inclination feature (see Table 4.5). 
+The Ramp Angle Setting field represents the current setting of the ramp angle of the Server.  
+If this field has to be present (i.e., if the Inclination and Ramp Angle Setting Present bit of the Flags field is 
+set to 1) but the Server does not support the calculation of the Ramp Angle Setting, the Server shall use 
+the special value 0x7FFF (i.e., decimal value of 32767 in SINT16 format), which means ‘Data Not 
+Available’. 
+4.4.1.7 Positive Elevation Gain and Negative Elevation Gain Field Pair 
+The Positive Elevation Gain and Negative Elevation Gain field pair may be included in the Treadmill Data 
+characteristic if the device supports the Elevation Gain feature (see Table 4.5). 
+The Positive Elevation Gain field represents the positive elevation gain since the training session has 
+started. 
+The Negative Elevation Gain field represents the negative elevation gain since the training session has 
+started. 
+4.4.1.8 Instantaneous Pace Field 
+The Instantaneous Pace field may be included in the Treadmill Data characteristic if the device supports 
+the Pace feature (see Table 4.5). 
+The Instantaneous Pace field represents the instantaneous pace of a user while exercising.  This value is 
+directly related to the instantaneous speed of the treadmill but is presented with d ifferent units. 
+4.4.1.9 Average Pace Field 
+The Average Pace field may be included in the Treadmill Data characteristic if the device supports the 
+Pace feature (see Table 4.5). 
+The Average Pace field represents the average pace of a user since the beginning of the training session. 
+This value is directly related to the average speed of the treadmill but is presented with different units.  
+4.4.1.10 Total Energy Field 
+The Total Energy field may be included in the Treadmill Data characteristic if the device supports the 
+Expended Energy feature (see Table 4.5). 
+The Total Energy field represents the total expended energy of a user since the training session has 
+started. 
+
+--- Page 26 ---
+ Fitness Machine Service  /  Service Specification 
+Bluetooth SIG Proprietary Page 26 of 78 
+If this field has to be present (i.e., if the Expended Energy Present bit of the Flags field is set to 1) but the 
+Server does not support the calculation of the Total Energy, the Server shall use the special value 
+0xFFFF (i.e., decimal value of 65535 in UINT16 format), which means ‘Data Not Available’. 
+4.4.1.11 Energy per Hour Field 
+The Energy per Hour field may be included in the Treadmill Data characteristic if the device supports the 
+Expended Energy feature (see Table 4.5). 
+The Energy per Hour field represents the average expended energy of a user during a period of one hour.  
+If this field has to be present (i.e., if the Expended Energy Present bit of the Flag s field is set to 1) but the 
+Server does not support the calculation of the Energy per Hour, the Server shall use the special value 
+0xFFFF (i.e., decimal value of 65535 in UINT16 format), which means ‘Data Not Available’. 
+4.4.1.12 Energy per Minute Field 
+The Energy per Minute field may be included in the Treadmill Data characteristic if the device supports 
+the Expended Energy feature (see Table 4.5). 
+The Energy per Minute field represents the average expended energy of a user during a period of one 
+minute. 
+If this field has to be present (i.e., if the Expended Energy Present bit of the Flags field is set to 1) but the 
+Server does not support the calculation of the Energy per Minute, the Server shall use the special value 
+0xFF (i.e., decimal value of 257 in UINT16 format), which means ‘Data Not Available’. 
+4.4.1.13 Heart Rate Field 
+The Heart Rate field may be included in the Treadmill Data characteristic if the device supports the Heart 
+Rate feature (see Table 4.5). 
+The Heart Rate field represents the current heart rate value of the user (e.g., measured via the contact 
+heart rate or any other means). 
+4.4.1.14 Metabolic Equivalent Field 
+The Metabolic Equivalent field may be included in the Treadmill Data characteristic if the device supports 
+the Metabolic Equivalent feature (see Table 4.5). 
+The Metabolic Equivalent field represents the metabolic equivalent of the user. 
+4.4.1.15 Elapsed Time Field 
+The Elapsed Time field may be included in the Treadmill Data characteristic if the device supports the 
+Elapsed Time feature (see Table 4.5). 
+The Elapsed Time field represents the elapsed time of a training session since the training session has 
+started (see Section 4.2). 
+Refer to Sections 4.1 and 4.18 for additional requirements on the presence of this field for the case wh ere 
+a Data Record is sent in multiple notifications. 
+
+--- Page 27 ---
+ Fitness Machine Service  /  Service Specification 
+Bluetooth SIG Proprietary Page 27 of 78 
+4.4.1.16 Remaining Time Field 
+The Remaining Time field may be included in the Treadmill Data characteristic if the device supports the 
+Remaining Time feature (see Table 4.5). 
+The Remaining Time field represents the remaining time of a training session that has been selected.  
+4.4.1.17 Force on Belt Field 
+The Force on Belt field may be included in the Treadmill Data characteristic if the device supports the 
+Force on Belt and Power Output features (see Table 4.5). 
+The Force on Belt field represents the force being applied to the treadmill belt by the user’s steps. A 
+positive value means that the user is accelerating the belt and a negative value means that the user is 
+slowing down the belt. 
+If this field has to be present (i.e., if the Force on Belt and Power Output Present bit of the Flags field is 
+set to 1) but the Server does not support the calculation of the Force on Belt, the Server shall use the 
+special value 0x7FFF (i.e., decimal value of 32767 in SINT16 format), which means ‘Data Not Available’. 
+4.4.1.18 Power Output Field 
+The Power Output field may be included in the Treadmill Data characteristic if the device supports the 
+Force on Belt and Power Output features (see Table 4.5). 
+The Power Output field represents the power being applied to the treadmill by the user’s steps. A positive 
+value means that the user is accelerating the belt and a negative value means that the user  is slowing 
+down the belt. 
+If this field has to be present (i.e., if the Force on Belt and Power Output Present bit of the Flags field is 
+set to 1) but the Server does not support the calculation of the Power Output, the Server shall use the 
+special value 0x7FFF (i.e., decimal value of 32767 in SINT16 format), which means ‘Data Not Available’. 
+4.5 Cross Trainer Data 
+The Cross Trainer Data characteristic is used to send training-related data to the Client from a cross 
+trainer (Server). Included in the characteristic value is a Flags field (for showing the presence of optional 
+fields and movement direction), and depending upon the contents of the Flags field, it may include one or 
+more optional fields as defined on the Bluetooth SIG Assigned Numbers webpage [2]. 
+4.5.1 Characteristic Behavior 
+When the Cross Trainer Data characteristic is configured for notification via the Client Characteristic 
+Configuration descriptor and a training-related data is available, this characteristic shall be notified. The 
+Server should notify this characteristic at a regular interval, typically once per second while in a 
+connection and the interval is not configurable by the Client. 
+For low energy, all the fields of this characteristic cannot be present simultaneously if using a default 
+ATT_MTU size. Refer to Sections 4.1 and 4.19 for additional requirements on the transmission of a Data 
+Record in multiple notifications. Refer to Section 4.18 for additional requirements on time-sensitive data. 
+For BR/EDR, this restriction does not exist due to a larger MTU size. 
+
+--- Page 28 ---
+ Fitness Machine Service  /  Service Specification 
+Bluetooth SIG Proprietary Page 28 of 78 
+4.5.1.1 Flags Field 
+The Flags field shall be included in the Cross Trainer Data characteristic. 
+Reserved for Future Use (RFU) bits in the Flags fields shall be set to 0. 
+The bits of the Flags field and relationship to bits in the Fitness Machine Feature characteristic are shown 
+in Table 4.6. 
+Flags Bit Name When Set to 0 When Set to 1 Corresponding Fitness 
+Machine Feature Support bit 
+(see Section 4.3) 
+More Data (bit 0), see Section 
+4.5.1.2 and 4.19. 
+Instantaneous 
+Speed field 
+present 
+Instantaneous 
+Speed field not 
+present 
+None 
+Average Speed Present (bit 
+1), see Section 4.5.1.3. 
+Corresponding 
+field not present 
+Corresponding 
+field present 
+Average Speed Supported (bit 0) 
+Total Distance Present (bit 2), 
+see Section 4.5.1.4. 
+Corresponding 
+field not present 
+Corresponding 
+field present 
+Total Distance Supported (bit 2) 
+Step Count Present (bit 3), 
+see Sections 4.5.1.5 and 
+4.5.1.6. 
+Corresponding 
+fields not 
+present 
+Corresponding 
+fields present 
+Step Count Supported (bit 6) 
+Stride Count Present (bit 4), 
+see Section 4.5.1.7. 
+Corresponding 
+field not present 
+Corresponding 
+field present 
+Stride Count Supported (bit 8) 
+Elevation Gain Present (bit 5), 
+see Section 4.5.1.8. 
+Corresponding 
+fields not 
+present 
+Corresponding 
+fields present 
+Elevation Gain Supported (bit 4) 
+Inclination and Ramp Angle 
+Setting Present (bit 6), see 
+Sections 4.5.1.9 and 4.5.1.10. 
+Corresponding 
+field not present 
+Corresponding 
+field present 
+Inclination Supported (bit 3) 
+Resistance Level Present (bit 
+7), see Section 4.5.1.11. 
+Corresponding 
+field not present 
+Corresponding 
+field present 
+Resistance Level Supported (bit 
+7) 
+Instantaneous Power Present 
+(bit 8), see Section 4.5.1.12. 
+Corresponding 
+field not present 
+Corresponding 
+field present 
+Power Measurement Supported 
+(bit 14) 
+Average Power Present (bit 
+9), see Section 4.5.1.13. 
+Corresponding 
+field not present 
+Corresponding 
+field present 
+Power Measurement Supported 
+(bit 14) 
+Expended Energy Present (bit 
+10), see Sections 4.5.1.14, 
+4.5.1.15 and 4.5.1.16. 
+Corresponding 
+fields not 
+present 
+Corresponding 
+fields present 
+Expended Energy Supported (bit 
+9) 
+Heart Rate Present (bit 11), 
+see Section 4.5.1.17. 
+Corresponding 
+field not present 
+Corresponding 
+field present 
+Heart Rate Measurement 
+Supported (bit 10) 
+Metabolic Equivalent Present 
+(bit 12), see Section 4.5.1.18. 
+Corresponding 
+field not present 
+Corresponding 
+field present 
+Metabolic Equivalent Supported 
+(bit 11) 
+
+--- Page 29 ---
+ Fitness Machine Service  /  Service Specification 
+Bluetooth SIG Proprietary Page 29 of 78 
+Elapsed Time Present (bit 13), 
+see Section 4.5.1.19. 
+Corresponding 
+field not present 
+Corresponding 
+field present 
+Elapsed Time Supported (bit12) 
+Remaining Time Present (bit 
+14), see Section 4.5.1.20. 
+Corresponding 
+field not present 
+Corresponding 
+field present 
+Remaining Time Supported (bit 
+13) 
+Movement Direction (bit 15) Forward Backward N/A 
+Table 4.6: Bit Definitions for the Cross Trainer Data Characteristic 
+4.5.1.2 Instantaneous Speed Field 
+The Instantaneous Speed field shall be included in the cross trainer-related Data Record. If the Data 
+Record is split into several notifications of the Cross Trainer Data characteristic, this field shall only be 
+included in the Cross Trainer Data characteristic when the More Data bit of the Flags field is set to 0. 
+Refer to Section 4.19 for additional information related to the transmission of a Data Record.  
+4.5.1.3 Average Speed Field 
+The Average Speed field may be included in the Cross Trainer Data characteristic if the device supports 
+the Average Speed feature (see Table 4.6). 
+The Average Speed field represents the average speed since the beginning of the training session. 
+4.5.1.4 Total Distance Field 
+The Total Distance field may be included in the Cross Trainer Data characteristic if the device supports 
+the Total Distance feature (see Table 4.6). 
+The Total Distance field represents the total distance reported by the Server since the beginning of the 
+training session. 
+4.5.1.5 Step per Minute Field 
+The Step per Minute Rate field may be included in the Cross Trainer Data characteristic if the device 
+supports the Step Count feature (see Table 4.6). 
+The Step per Minute Rate field represents the average step rate of a user during a period of one minute. 
+If this field has to be present (i.e., if the Step Count Present bit of the Flags field is set to 1) but the Server 
+does not support the calculation of the Step per Minute, the Server shall use the special value 0xFFFF 
+(i.e., decimal value of 65535 in UINT16 format), which means ‘Data Not Available’. 
+4.5.1.6 Average Step Rate Field 
+The Average Step Rate field may be included in the Cross Trainer Data characteristic if the device 
+supports the Step Count feature (see Table 4.6). 
+The Average Step Rate field represents the average step rate since the beginning of the training sessio n. 
+If this field has to be present (i.e., if the Step Count Present bit of the Flags field is set to 1) but the Server 
+does not support the calculation of the Average Step Rate, the Server shall use the special value 0xFFFF  
+(i.e., decimal value of 65535 in UINT16 format), which means ‘Data Not Available’. 
+
+--- Page 30 ---
+ Fitness Machine Service  /  Service Specification 
+Bluetooth SIG Proprietary Page 30 of 78 
+4.5.1.7 Stride Count Field 
+The Stride Count field may be included in the Cross Trainer Data characteristic if the device supports the 
+Stride Count feature (see Table 4.6). 
+The Stride Count field represents the total number of strides since the beginning of the training session. 
+4.5.1.8 Positive Elevation Gain and Negative Elevation Gain Field Pair 
+The Positive Elevation and Negative Elevation Gain field pair may be included in the Cross Trainer Data 
+characteristic if the device supports the Elevation Gain feature (see Table 4.6). 
+The Positive Elevation Gain field represents the positive elevation gain since the training session has 
+started. 
+The Negative Elevation Gain field represents the negative elevation gain sin ce the training session has 
+started. 
+4.5.1.9 Inclination Field 
+The Inclination field may be included in the Cross Trainer Data characteristic if the device supports the 
+Inclination feature (see Table 4.6). 
+The Inclination field represents the current inclination of the Server. A positive value means that the user 
+feels as if they are going uphill and a negative value means that the user feels as if they are going 
+downhill. 
+If this field has to be present (i.e., if the Inclination and Ramp Angle Setting Present bit of the Flags field is 
+set to 1) but the Server does not support the calculation of the Inclination, the Server shall use the special 
+value 0x7FFF (i.e., decimal value of 32767 in SINT16 format), which means ‘Data Not Available’. 
+4.5.1.10 Ramp Angle Setting Field 
+The Ramp Angle Setting field may be included in the Cross Trainer Data characteristic if the device 
+supports the Inclination feature (see Table 4.6). 
+The Ramp Angle Setting field represents the current setting of the ramp angle of the Server.  
+If this field has to be present (i.e., if the Inclination and Ramp Angle Setting Present bit of the Flags field is 
+set to 1) but the Server does not support the calculation of the Ramp Angle Setting, the Server shall use 
+the special value 0x7FFF (i.e., decimal value of 32767 in SINT16 format), which means ‘Data Not 
+Available’. 
+4.5.1.11 Resistance Level Field 
+The Resistance Level field may be included in the Cross Trainer Data characteristic if the device supports 
+the Resistance Level feature (see Table 4.6). 
+The Resistance Level field represents the value of the current value of the resistance level of the Server. 
+4.5.1.12 Instantaneous Power Field 
+The Instantaneous Power field may be included in the Cross Trainer Data characteristic if the device 
+supports the Power Measurement feature (see Table 4.6). 
+
+--- Page 31 ---
+ Fitness Machine Service  /  Service Specification 
+Bluetooth SIG Proprietary Page 31 of 78 
+The Instantaneous Power field represents the value of the instantaneous power measured by the Server. 
+4.5.1.13 Average Power Field 
+The Average Power field may be included in the Cross Trainer Data characteristic if the device supports 
+the Power Measurement feature (see Table 4.6). 
+The Average Power field represents the value of the average power measured by the Server since the 
+beginning of the training session. 
+4.5.1.14 Total Energy Field 
+The Total Energy field may be included in the Cross Trainer Data characteristic if the device supports the 
+Expended Energy feature (see Table 4.6). 
+The Total Energy field represents the total expended energy of a user since the training session has 
+started. 
+If this field has to be present (i.e., if the Expended Energy Present bit of the Flags field is set to 1) but the 
+Server does not support the calculation of the Total Energy, the Server shall use the special value 
+0xFFFF (i.e., decimal value of 65535 in UINT16 format), which means ‘Data Not Available’. 
+4.5.1.15 Energy per Hour Field 
+The Energy per Hour field may be included in the Cross Trainer Data characteristic if the device supports 
+the Expended Energy feature (see Table 4.6). 
+The Energy per Hour field represents the average expended energy of a user during a period of one hour.  
+If this field has to be present (i.e., if the Expended Energy Present bit of the Flags field is set to 1)  but the 
+Server does not support the calculation of the Energy per Hour, the Server shall use the special value 
+0xFFFF (i.e., decimal value of 65535 in UINT16 format), which means ‘Data Not Available’. 
+4.5.1.16 Energy per Minute Field 
+The Energy per Minute field may be included in the Cross Trainer Data characteristic if the device 
+supports the Expended Energy feature (see Table 4.6). 
+The Energy per Minute field represents the average expended energy of a user during a period of one 
+minute. 
+If this field has to be present (i.e., if the Expended Energy Present bit of the Flags field is set to 1) but the 
+Server does not support the calculation of the Energy per Minute, the Server shall use the special value 
+0xFF (i.e., decimal value of 255 in UINT16 format), which means ‘Data Not Available’. 
+4.5.1.17 Heart Rate Field 
+The Heart Rate field may be included in the Cross Trainer Data characteristic if the device supports the 
+Heart Rate feature (see Table 4.6). 
+The Heart Rate field represents the current heart rate value of the user (e.g., measured via the contact 
+heart rate or any other means). 
+
+--- Page 32 ---
+ Fitness Machine Service  /  Service Specification 
+Bluetooth SIG Proprietary Page 32 of 78 
+4.5.1.18 Metabolic Equivalent Field 
+The Metabolic Equivalent field may be included in the Cross Trainer Data characteristic if the device 
+supports the Metabolic Equivalent feature (see Table 4.6). 
+The Metabolic Equivalent field represents the metabolic equivalent of the user. 
+4.5.1.19 Elapsed Time Field 
+The Elapsed Time field may be included in the Cross Trainer Data characteristic if the device supports the 
+Elapsed Time feature (see Table 4.6). 
+The Elapsed Time field represents the elapsed time of a training session since the training session has 
+started (see Section 4.2). 
+Refer to Sections 4.1 and 4.18 for additional requirements on the presence of this field for the case wh ere 
+a Data Record is sent in multiple notifications. 
+4.5.1.20 Remaining Time Field 
+The Remaining Time field may be included in the Cross Trainer Data characteristic if the device supports 
+the Remaining Time feature (see Table 4.6). 
+The Remaining Time field represents the remaining time of a training session that has been selected.  
+4.6 Step Climber Data 
+The Step Climber Data characteristic is used to send training-related data to the Client from a step 
+climber (Server). Included in the characteristic value is a Flags field (for showing the presence of optional 
+fields), and depending upon the contents of the Flags field, it may include one or more optional fields as 
+defined on the Bluetooth SIG Assigned Numbers webpage [2]. 
+4.6.1 Characteristic Behavior 
+When the Step Climber Data characteristic is configured for notification via the Client Characteristic 
+Configuration descriptor and training-related data is available, this characteristic shall be notified. The 
+Server should notify this characteristic at a regular interval, typically once per second while in a 
+connection and the interval is not configurable by the Client. 
+For low energy, all the fields of this characteristic cannot be present simultaneously if using a default 
+ATT_MTU size. Refer to Sections 4.1 and 4.19 for additional requirements on the transmission of a Data 
+Record in multiple notifications. Refer to Section 4.18 for additional requirements on time-sensitive data. 
+For BR/EDR, this restriction does not exist due to a larger MTU size. 
+4.6.1.1 Flags Field 
+The Flags field shall be included in the Step Climber Data characteristic. 
+Reserved for Future Use (RFU) bits in the Flags fields shall be set to 0. 
+The bits of the Flags field and relationship to bits in the Fitness Machine Feature characteristic are shown 
+in Table 4.7. 
+
+--- Page 33 ---
+ Fitness Machine Service  /  Service Specification 
+Bluetooth SIG Proprietary Page 33 of 78 
+Flags Bit Name When Set to 0 When Set to 1 Corresponding Fitness 
+Machine Feature Support bit 
+(see Section 4.3) 
+More Data (bit 0), see 
+Sections 4.6.1.2, 4.6.1.3 and 
+4.19. 
+Floors and Step 
+Count fields 
+present 
+Floors and 
+Step Count 
+fields not 
+present 
+None 
+Step per Minute present (bit 
+1), see Section 4.6.1.4. 
+Corresponding 
+field not present 
+Corresponding 
+field present 
+Step Count Supported (bit 6) 
+Average Step Rate Present 
+(bit 2), see Section 4.6.1.5. 
+Corresponding 
+field not present 
+Corresponding 
+field present 
+Step Count Supported (bit 6) 
+Positive Elevation Gain 
+Present (bit 3), see Section 
+4.6.1.6. 
+Corresponding 
+field not present 
+Corresponding 
+field present 
+Elevation Gain Supported (bit 4) 
+Expended Energy Present (bit 
+4), see Sections 4.6.1.7, 
+4.6.1.8 and 4.6.1.9. 
+Corresponding 
+fields not 
+present 
+Corresponding 
+fields present 
+Expended Energy Supported (bit 
+9) 
+Heart Rate Present (bit 5), see 
+Section 4.6.1.10. 
+Corresponding 
+field not present 
+Corresponding 
+field present 
+Heart Rate Measurement 
+Supported (bit 10) 
+Metabolic Equivalent Present 
+(bit 6), see Section 4.6.1.11. 
+Corresponding 
+field not present 
+Corresponding 
+field present 
+Metabolic Equivalent Supported 
+(bit 11) 
+Elapsed Time Present (bit 7), 
+see Section 4.6.1.12. 
+Corresponding 
+field not present 
+Corresponding 
+field present 
+Elapsed Time Supported (bit 12) 
+Remaining Time Present (bit 
+8), see Section 4.6.1.13. 
+Corresponding 
+field not present 
+Corresponding 
+field present 
+Remaining Time Supported (bit 
+13) 
+Table 4.7: Bit Definitions for the Step Climber Data Characteristic 
+4.6.1.2 Floors Field 
+The Floors field shall be included in the step climber-related Data Record. If the Data Record is split into 
+several notifications of the Step Climber Data characteristic, this field shall only be included in the Step 
+Climber Data characteristic when the More Data bit of the Flags field is set to 0. Refer to Section 4.19 for 
+additional information related to the transmission of a Data Record. 
+The Floors field represents the total number of floors counted by the Server since the beginning of the 
+training session. 
+4.6.1.3 Step Count Field 
+The Step Count field shall be included in the step climber-related Data Record. If the Data Record is split 
+into several notifications of the Step Climber Data characteristic, this field shall only be included in the 
+Step Climber Data characteristic when the More Data bit of the Flags field is set to 0. Refer to Section 
+4.19 for additional information related to the transmission of a Data Record.  
+The Step Count field represents the total number of steps counted by the Server since the beginning of 
+the training session. 
+
+--- Page 34 ---
+ Fitness Machine Service  /  Service Specification 
+Bluetooth SIG Proprietary Page 34 of 78 
+4.6.1.4 Step per Minute Field 
+The Step per Minute Rate field may be included in the Step Climber Data characteristic if the device 
+supports the Step Count feature (see Table 4.7). 
+The Step per Minute Rate field represents the average step rate of a user during a period of one minute. 
+4.6.1.5 Average Step Rate Field 
+The Average Step Rate field may be included in the Step Climber Data characteristic if the device 
+supports the Step Count feature (see Table 4.7). 
+The Average Step Rate field represents the average step rate since the beginning of the training session.  
+4.6.1.6 Positive Elevation Gain Field 
+The Positive Elevation field may be included in the Step Climber Data characteristic if the device supports 
+the Elevation Gain feature (see Table 4.7). 
+The Positive Elevation Gain field represents the positive elevation gain since the beginning of the training 
+session. 
+4.6.1.7 Total Energy Field 
+The Total Energy field may be included in the Step Climber Data characteristic if the device supports the 
+Expended Energy feature (see Table 4.7). 
+The Total Energy field represents the total expended energy of a user since the training session has 
+started. 
+If this field has to be present (i.e., if the Expended Energy Present bit of the Flags field is set to 1) but the 
+Server does not support the calculation of the Total Energy, the Server shall use the special value 
+0xFFFF (i.e., decimal value of 65535 in UINT16 format), which means ‘Data Not Available’. 
+4.6.1.8 Energy per Hour Field 
+The Energy per Hour field may be included in the Step Climber Data characteristic if the device supports 
+the Expended Energy feature (see Table 4.7). 
+The Energy per Hour field represents the average expended energy of a user during a period of one hour. 
+If this field has to be present (i.e., if the Expended Energy Present bit of the Flags field is set to 1) but the 
+Server does not support the calculation of the Energy per Hour, the Server shall use the special value 
+0xFFFF (i.e., decimal value of 65535 in UINT16 format), which means ‘Data Not Available’. 
+4.6.1.9 Energy per Minute Field 
+The Energy per Minute field may be included in the Step Climber Data characteristic if the device 
+supports the Expended Energy feature (see Table 4.7). 
+The Energy per Minute field represents the average expended energy of a user during a period of one 
+minute. 
+
+--- Page 35 ---
+ Fitness Machine Service  /  Service Specification 
+Bluetooth SIG Proprietary Page 35 of 78 
+If this field has to be present (i.e., if the Expended Energy Present bit of the Flags field is set to 1) but the 
+Server does not support the calculation of the Energy per Minute, the Server shall use the special value 
+0xFF (i.e., decimal value of 255 in UINT16 format), which means ‘Data Not Available’. 
+4.6.1.10 Heart Rate Field 
+The Heart Rate field may be included in the Step Climber Data characteristic if the device supports the 
+Heart Rate feature (see Table 4.7). 
+The Heart Rate field represents the current heart rate value of the user (e.g., measured via the contact 
+heart rate or any other means). 
+4.6.1.11 Metabolic Equivalent Field 
+The Metabolic Equivalent field may be included in the Step Climber Data characteristic if the device 
+supports the Metabolic Equivalent feature (see Table 4.7). 
+The Metabolic Equivalent field represents the metabolic equivalent of the user. 
+4.6.1.12 Elapsed Time Field 
+The Elapsed Time field may be included in the Step Climber Data characteristic if the device supports the 
+Elapsed Time feature (see Table 4.7). 
+The Elapsed Time field represents the elapsed time of a training session since the training session has 
+started (See Section 4.2).  
+Refer to Sections 4.1 and 4.18 for additional requirements on the presence of this field for the case where 
+a Data Record is sent in multiple notifications. 
+4.6.1.13 Remaining Time Field 
+The Remaining Time field may be included in the Step Climber Data characteristic if the device supports 
+the Remaining Time feature (see Table 4.7). 
+The Remaining Time field represents the remaining time of a selected training session.  
+4.7 Stair Climber Data 
+The Stair Climber Data characteristic is used to send training-related data to the Client from a stair 
+climber (Server). Included in the characteristic value is a Flags field (for showing the presence of optional 
+fields), and depending upon the contents of the Flags field, it may include one or more optional fields as 
+defined on the Bluetooth SIG Assigned Numbers webpage [2]. 
+4.7.1 Characteristic Behavior 
+When the Stair Climber Data characteristic is configured for notification via the Client Characteristic 
+Configuration descriptor and training-related data is available, this characteristic shall be notified. The 
+Server should notify this characteristic at a regular interval, typically once per second while in a 
+connection and the interval is not configurable by the Client. 
+For low energy, all the fields of this characteristic cannot be present simultaneously if using a default 
+ATT_MTU size. Refer to Sections 4.1 and 4.19 for additional requirements on the transmission of a Data 
+Record in multiple notifications. Refer to Section 4.18 for additional requirements on time-sensitive data. 
+
+--- Page 36 ---
+ Fitness Machine Service  /  Service Specification 
+Bluetooth SIG Proprietary Page 36 of 78 
+For BR/EDR, this restriction does not exist due to a larger MTU size. 
+4.7.1.1 Flags Field 
+The Flags field shall be included in the Stair Climber Data characteristic. 
+Reserved for Future Use (RFU) bits in the Flags fields shall be set to 0. 
+The bits of the Flags field and relationship to bits in the Fitness Machine Feature characteristic are shown 
+in Table 4.8. 
+Flags Bit Name When Set to 0 When Set to 1 Corresponding Fitness 
+Machine Feature Support bit 
+(see Section 4.3) 
+More Data (bit 0), see Section 
+4.7.1.2 and 4.19. 
+Floors field 
+present 
+Floors field not 
+present 
+None 
+Step per Minute present (bit 
+1), see Section 4.7.1.3. 
+Corresponding 
+field not present 
+Corresponding 
+field present 
+Step Count Supported (bit 6) 
+Average Step Rate Present 
+(bit 2), see Section 4.7.1.4. 
+Corresponding 
+field not present 
+Corresponding 
+field present 
+Step Count Supported (bit 6) 
+Positive Elevation Gain 
+Present (bit 3), see Section 
+4.7.1.5. 
+Corresponding 
+field not present 
+Corresponding 
+field present 
+Elevation Gain Supported (bit 4) 
+Stride Count Present (bit 4), 
+see Section 4.7.1.6. 
+Corresponding 
+field not present 
+Corresponding 
+field present 
+Stride Count Supported (bit 8) 
+Expended Energy Present (bit 
+5), see Sections 4.7.1.7, 
+4.7.1.8 and 4.7.1.9. 
+Corresponding 
+fields not 
+present 
+Corresponding 
+fields present 
+Expended Energy Supported (bit 
+9) 
+Heart Rate Present (bit 6), see 
+Section 4.7.1.10. 
+Corresponding 
+field not present 
+Corresponding 
+field present 
+Heart Rate Measurement 
+Supported (bit 10) 
+Metabolic Equivalent Present 
+(bit 7), see Section 4.7.1.11. 
+Corresponding 
+field not present 
+Corresponding 
+field present 
+Metabolic Equivalent Supported 
+(bit 11) 
+Elapsed Time Present (bit 8), 
+see Section 4.7.1.12. 
+Corresponding 
+field not present 
+Corresponding 
+field present 
+Elapsed Time Supported (bit 12) 
+Remaining Time Present (bit 
+9), see Section 4.7.1.13. 
+Corresponding 
+field not present 
+Corresponding 
+field present 
+Remaining Time Supported (bit 
+13) 
+Table 4.8: Bit Definitions for the Stair Climber Data Characteristic 
+4.7.1.2 Floors Field 
+The Floors field shall be included in the stair climber-related Data Record. If the Data Record is split into 
+several notifications of the Stair Climber Data, this field shall only be included in the Stair Climber Data 
+characteristic when the More Data bit of the Flags field is set to 0. Refer to Section 4.19 for additional 
+information related to the transmission of a Data Record. 
+The Floors field represents the total number of floors counted by the Server since the beginning of the 
+training session. 
+
+--- Page 37 ---
+ Fitness Machine Service  /  Service Specification 
+Bluetooth SIG Proprietary Page 37 of 78 
+4.7.1.3 Step per Minute Rate Field 
+The Step per Minute Rate field may be included in the Stair Climber Data characteristic if the device 
+supports the Step Count feature (see Table 4.8). 
+The Step per Minute Rate field represents the average step rate of a user during a period of one minute. 
+4.7.1.4 Average Step Rate Field 
+The Average Step Rate field may be included in the Stair Climber Data characteristic if the device 
+supports the Step Count feature (see Table 4.8). 
+The Average Step Rate field represents the average step rate since the beginning of the training session. 
+4.7.1.5 Positive Elevation Gain Field 
+The Positive Elevation Gain field may be included in the Stair Climber Data characteristic if the device 
+supports the Elevation Gain feature (see Table 4.8). 
+The Positive Elevation Gain field represents the positive elevation gain since the beginning of the training 
+session. 
+4.7.1.6 Stride Count Field 
+The Stride Count field may be included in the Stair Climber Data characteristic if the device supports the 
+Stride Count feature (see Table 4.8). 
+The Stride Count field represents the total number of strides since the beginning of the training session. 
+4.7.1.7 Total Energy Field 
+The Total Energy field may be included in the Stair Climber Data characteristic if the device supports the 
+Expended Energy feature (see Table 4.8). 
+The Total Energy field represents the total expended energy of a user since the training session has 
+started. 
+If this field has to be present (i.e., if the Expended Energy Present bit of the Flags field is set to 1) but the 
+Server does not support the calculation of the Total Energy, the Server shall use the special value 
+0xFFFF (i.e., decimal value of 65535 in UINT16 format), which means ‘Data Not Available’. 
+4.7.1.8 Energy per Hour Field 
+The Energy per Hour field may be included in the Stair Climber Data characteristic if the device supports 
+the Expended Energy feature (see Table 4.8). 
+The Energy per Hour field represents the average expended energy of a user during a period of one hour.  
+If this field has to be present (i.e., if the Expended Energy Present bit of the Flags field is set to 1) but the 
+Server does not support the calculation of the Energy per Hour, the Server shall use the special value 
+0xFFFF (i.e., decimal value of 65535 in UINT16 format), which means ‘Data Not Available’. 
+
+--- Page 38 ---
+ Fitness Machine Service  /  Service Specification 
+Bluetooth SIG Proprietary Page 38 of 78 
+4.7.1.9 Energy per Minute Field 
+The Energy per Minute field may be included in the Stair Climber Data characteristic if the device 
+supports the Expended Energy feature (see Table 4.8). 
+The Energy per Minute field represents the average expended energy of a user during a period of one 
+minute. 
+If this field has to be present (i.e., if the Expended Energy Present bit of the Flags field is set to 1) but the 
+Server does not support the calculation of the Energy per Minute, the Server shall use the special va lue 
+0xFF (i.e., decimal value of 255 in UINT16 format), which means ‘Data Not Available’. 
+4.7.1.10 Heart Rate Field 
+The Heart Rate field may be included in the Stair Climber Data characteristic if the device supports the 
+Heart Rate feature (see Table 4.8). 
+The Heart Rate field represents the current heart rate value of the user (e.g., measured via the contact 
+heart rate or any other means). 
+4.7.1.11 Metabolic Equivalent Field 
+The Metabolic Equivalent field may be included in the Stair Climber Data characteristic if the device 
+supports the Metabolic Equivalent feature (see Table 4.8). 
+The Metabolic Equivalent field represents the metabolic equivalent of the user. 
+4.7.1.12 Elapsed Time Field 
+The Elapsed Time field may be included in the Stair Climber Data characteristic if the device supports the 
+Elapsed Time feature (see Table 4.8). 
+The Elapsed Time field represents the elapsed time of a training session since the training session has 
+started (see Section 4.2). 
+Refer to Sections 4.1 and 4.18 for additional requirements on the presence of this field for the case where 
+a Data Record is sent in multiple notifications. 
+4.7.1.13 Remaining Time Field 
+The Remaining Time field may be included in the Stair Climber Data characteristic if the device supports 
+the Remaining Time feature (see Table 4.8). 
+The Remaining Time field represents the remaining time of a training session that has been selected.  
+4.8 Rower Data 
+The Rower Data characteristic is used to send training-related data to the Client from a rower (Server). 
+Included in the characteristic value is a Flags field (for showing the presence of optional), and depending 
+upon the contents of the Flags field, it may include one or more optional fields as defined on the Bluetooth 
+SIG Assigned Numbers webpage [2]. 
+
+--- Page 39 ---
+ Fitness Machine Service  /  Service Specification 
+Bluetooth SIG Proprietary Page 39 of 78 
+4.8.1 Characteristic Behavior 
+When the Rower Data characteristic is configured for notification via the Client Characteristic 
+Configuration descriptor and training-related data is available, this characteristic shall be notified. The 
+Server should notify this characteristic at a regular interval, typically once per second while in a 
+connection and the interval is not configurable by the Client. 
+For low energy, all the fields of this characteristic cannot be present simultaneously if using a default 
+ATT_MTU size. Refer to Sections 4.1 and 4.19 for additional requirements on the transmission of a Data 
+Record in multiple notifications. Refer to Section 4.18 for additional requirements on time-sensitive data. 
+For BR/EDR, this restriction does not exist due to a larger MTU size. 
+4.8.1.1 Flags Field 
+The Flags field shall be included in the Rower Data characteristic. 
+Reserved for Future Use (RFU) bits in the Flags fields shall be set to 0. 
+The bits of the Flags field and relationship to bits in the Fitness Machine Feature characteristic are shown 
+in Table 4.9. 
+Flags Bit Name When Set to 0 When Set to 1 Corresponding Fitness 
+Machine Feature Support bit 
+(see Section 4.3) 
+More Data (bit 0), see 
+Sections 4.8.1.2, 4.8.1.3 and 
+4.19. 
+Stroke Rate and 
+Stroke Count 
+field present 
+Stroke Rate 
+and Stroke 
+Count fields 
+not present 
+None 
+Average Stroke Rate present 
+(bit 1), see Section 4.8.1.4. 
+Corresponding 
+field not present 
+Corresponding 
+field present 
+Cadence Supported (bit 1) 
+Total Distance Present (bit 2), 
+see Section 4.8.1.5. 
+Corresponding 
+field not present 
+Corresponding 
+field present 
+Total Distance Supported (bit 2) 
+Instantaneous Pace Present 
+(bit 3), see Section 4.8.1.6. 
+Corresponding 
+field not present 
+Corresponding 
+field present 
+Pace Supported (bit 5) 
+Average Pace Present (bit 4), 
+see Section 4.8.1.7. 
+Corresponding 
+field not present 
+Corresponding 
+field present 
+Pace Supported (bit 5) 
+Instantaneous Power Present 
+(bit 5), see Section 4.8.1.8. 
+Corresponding 
+field not present 
+Corresponding 
+field present 
+Power Measurement Supported 
+(bit 14) 
+Average Power Present (bit 
+6), see Section 4.8.1.9. 
+Corresponding 
+field not present 
+Corresponding 
+field present 
+Power Measurement Supported 
+(bit 14) 
+Resistance Level (bit 7), see 
+Section 4.8.1.10. 
+Corresponding 
+field not present 
+Corresponding 
+field present 
+Resistance Level Supported (bit 
+7) 
+Expended Energy Present (bit 
+8), see Sections 4.8.1.11, 
+4.8.1.12 and 4.8.1.13. 
+Corresponding 
+fields not 
+present 
+Corresponding 
+fields present 
+Expended Energy Supported (bit 
+9) 
+
+--- Page 40 ---
+ Fitness Machine Service  /  Service Specification 
+Bluetooth SIG Proprietary Page 40 of 78 
+Heart Rate Present (bit 9), see 
+Section 4.8.1.14. 
+Corresponding 
+field not present 
+Corresponding 
+field present 
+Heart Rate Measurement 
+Supported (bit 10) 
+Metabolic Equivalent Present 
+(bit 10), see Section 4.8.1.15. 
+Corresponding 
+field not present 
+Corresponding 
+field present 
+Metabolic Equivalent Supported 
+(bit 11) 
+Elapsed Time Present (bit 11), 
+see Section 4.8.1.16. 
+Corresponding 
+field not present 
+Corresponding 
+field present 
+Elapsed Time Supported (bit 12) 
+Remaining Time Present (bit 
+12), see Section 4.8.1.17. 
+Corresponding 
+field not present 
+Corresponding 
+field present 
+Remaining Time Supported (bit 
+13) 
+Table 4.9: Bit Definitions for the Rower Data Characteristic 
+4.8.1.2 Stroke Rate Field 
+The Stroke Rate field shall be included in the rower-related Data Record. If the Data Record is split into 
+several notifications of the Rower Data characteristic, this field shall only be included in the Rower Data 
+characteristic when the More Data bit of the Flags field is set to 0. Refer to Section 4.19 for additional 
+information related to the transmission of a Data Record. 
+The Stroke Rate field represents the instantaneous stroke rate measured by the Server. 
+4.8.1.3 Stroke Count Field 
+The Stroke Count field shall be included in the rower-related Data Record. If the Data Record is split into 
+several notifications of the Rower Data characteristic, this field shall only be included in the Rower Data 
+characteristic when the More Data bit of the Flags field is set to 0. Refer to Section 4.19 for additional 
+information related to the transmission of a Data Record. 
+The Stroke Count field represents the total number of strokes since the beginning of the training session. 
+4.8.1.4 Average Stroke Rate Field 
+The Average Stroke Rate field may be included in the Rower Data characteristic if the device supports 
+the Cadence feature (see Table 4.9). 
+The Average Stroke Rate field represents the average speed since the beginning of the training session.  
+4.8.1.5 Total Distance Field 
+The Total Distance field may be included in the Rower Data characteristic if the device supports the Total 
+Distance feature (see Table 4.9). 
+The Total Distance field represents the total distance reported by the Server since the beginning of the 
+training session. 
+4.8.1.6 Instantaneous Pace Field 
+The Instantaneous Pace field may be included in the Rower Data characteristic if the device supports the 
+Pace feature (see Table 4.9). 
+The Instantaneous Pace field represents the value of the pace (time per 500 meters) of the user while 
+exercising. 
+
+--- Page 41 ---
+ Fitness Machine Service  /  Service Specification 
+Bluetooth SIG Proprietary Page 41 of 78 
+4.8.1.7 Average Pace Field 
+The Average Pace field may be included in the Rower Data characteristic if the device supports the Pace 
+feature (see Table 4.9). 
+The Average Pace field represents the value of the average pace (time per 500 meters) since the 
+beginning of the training session. 
+4.8.1.8 Instantaneous Power Field 
+The Instantaneous Power field may be included in the Rower Data characteristic if the device supports 
+the Power Measurement feature (see Table 4.9). 
+The Instantaneous Power field represents the value of the instantaneous power measured by the Server. 
+4.8.1.9 Average Power Field 
+The Average Power field may be included in the Rower Data characteristic if the device supports the 
+Power Measurement feature (see Table 4.9). 
+The Average Power field represents the value of the average power measured by the Server since the 
+beginning of the training session. 
+4.8.1.10 Resistance Level Field 
+The Resistance Level field may be included in the Rower Data characteristic if the device supports the 
+Resistance Level feature (see Table 4.9). 
+The Resistance Level field represents the value of the current value of the resistance level of the Server. 
+4.8.1.11 Total Energy Field 
+The Total Energy field may be included in the Rower Data characteristic if the device supports the 
+Expended Energy feature (see Table 4.9). 
+The Total Energy field represents the total expended energy of a user since the training session has 
+started. 
+If this field has to be present (i.e., if the Expended Energy Present bit of the Flags field is set to 1) but the 
+Server does not support the calculation of the Total Energy, the Server shall use the special value 
+0xFFFF (i.e., decimal value of 65535 in UINT16 format), which means ‘Data Not Available’. 
+4.8.1.12 Energy per Hour Field 
+The Energy per Hour field may be included in the Rower Data characteristic if the device supports the 
+Expended Energy feature (see Table 4.9). 
+The Energy per Hour field represents the average expended energy of a user during a period of one hou r. 
+If this field has to be present (i.e., if the Expended Energy Present bit of the Flags field is set to 1) but the 
+Server does not support the calculation of the Energy per Hour, the Server shall use the special value 
+0xFFFF (i.e., decimal value of 65535 in UINT16 format), which means ‘Data Not Available’. 
+
+--- Page 42 ---
+ Fitness Machine Service  /  Service Specification 
+Bluetooth SIG Proprietary Page 42 of 78 
+4.8.1.13 Energy per Minute Field 
+The Energy per Minute field may be included in the Rower Data characteristic if the device supports the 
+Expended Energy feature (see Table 4.9). 
+The Energy per Minute field represents the average expended energy of a user during a period of one 
+minute. 
+If this field has to be present (i.e., if the Expended Energy Present bit of the Flags field is set to 1) but the 
+Server does not support the calculation of the Energy per Minute, the Server shall use the special value 
+0xFF (i.e., decimal value of 255 in UINT16 format), which means ‘Data Not Available’. 
+4.8.1.14 Heart Rate Field 
+The Heart Rate field may be included in the Rower Data characteristic if the device supports the Heart 
+Rate feature (see Table 4.9). 
+The Heart Rate field represents the current heart rate value of the user (e.g., measured via the contact 
+heart rate or any other means). 
+4.8.1.15 Metabolic Equivalent Field 
+The Metabolic Equivalent field may be included in the Rower Data characteristic if the device supports the 
+Metabolic Equivalent feature (see Table 4.9). 
+The Metabolic Equivalent field represents the metabolic equivalent of the user. 
+4.8.1.16 Elapsed Time Field 
+The Elapsed Time field may be included in the Rower Data characteristic if the device supports the 
+Elapsed Time feature (see Table 4.9). 
+The Elapsed Time field represents the elapsed time of a training session since the training session has 
+started (see Section 4.2).  
+Refer to Sections 4.1 and 4.18 for additional requirements on the presence of this field for the case where 
+a Data Record is sent in multiple notifications. 
+4.8.1.17 Remaining Time Field 
+The Remaining Time field may be included in the Rower Data characteristic if the device supports the 
+Remaining Time feature (see Table 4.9). 
+The Remaining Time field represents the remaining time of a selected training session.  
+4.9 Indoor Bike Data 
+The Indoor Bike Data characteristic is used to send training-related data to the Client from an indoor bike 
+(Server). Included in the characteristic value is a Flags field (for showing the presence of optional fields), 
+and depending upon the contents of the Flags field, it may include one or more optional fields as defined 
+on the Bluetooth SIG Assigned Numbers webpage [2]. 
+
+--- Page 43 ---
+ Fitness Machine Service  /  Service Specification 
+Bluetooth SIG Proprietary Page 43 of 78 
+4.9.1 Characteristic Behavior 
+When the Indoor Bike Data characteristic is configured for notification via the Client Characteristic 
+Configuration descriptor and training-related data is available, this characteristic shall be notified. The 
+Server should notify this characteristic at a regular interval, typically once per second while in a 
+connection and the interval is not configurable by the Client. 
+For low energy, all the fields of this characteristic cannot be present simultaneously if using a default 
+ATT_MTU size. Refer to Sections 4.1 and 4.19 for additional requirements on the transmission of a Data 
+Record in multiple notifications. Refer to Section 4.18 for additional requirements on time-sensitive data. 
+For BR/EDR, this restriction does not exist due to a larger MTU size. 
+4.9.1.1 Flags Field 
+The Flags field shall be included in the Indoor Bike Data characteristic. 
+Reserved for Future Use (RFU) bits in the Flags fields shall be set to 0. 
+The bits of the Flags field and relationship to bits in the Fitness Machine Feature characteristic are shown 
+in Table 4.10. 
+Flags Bit Name When Set to 0 When Set to 1 Corresponding Fitness 
+Machine Feature Support bit 
+(see Section 4.3) 
+More Data (bit 0), see 
+Sections 4.9.1.2 and 4.19. 
+Instantaneous 
+Speed field 
+present 
+Instantaneous 
+Speed fields 
+not present 
+None 
+Average Speed present (bit 1), 
+see Section 4.9.1.3. 
+Corresponding 
+field not present 
+Corresponding 
+field present 
+Average Speed Supported (bit 0) 
+Instantaneous Cadence (bit 
+2), see Section 4.9.1.4. 
+Corresponding 
+fields present 
+Corresponding 
+fields not 
+present 
+Cadence Supported (bit 1) 
+Average Cadence present (bit 
+3), see Section 4.9.1.5. 
+Corresponding 
+field not present 
+Corresponding 
+field present 
+Cadence Supported (bit 1) 
+Total Distance Present (bit 4), 
+see Section 4.9.1.6. 
+Corresponding 
+field not present 
+Corresponding 
+field present 
+Total Distance Supported (bit 2) 
+Resistance Level Present (bit 
+5), see Section 4.9.1.7. 
+Corresponding 
+field not present 
+Corresponding 
+field present 
+Resistance Level Supported (bit 
+7) 
+Instantaneous Power Present 
+(bit 6), see Section 4.9.1.8. 
+Corresponding 
+field not present 
+Corresponding 
+field present 
+Power Measurement Supported 
+(bit 14) 
+Average Power Present (bit 
+7), see Section 4.9.1.9. 
+Corresponding 
+field not present 
+Corresponding 
+field present 
+Power Measurement Supported 
+(bit 14) 
+Expended Energy Present (bit 
+8), see Sections 4.9.1.10, 
+4.9.1.11 and 4.9.1.12. 
+Corresponding 
+fields not 
+present 
+Corresponding 
+fields present 
+Expended Energy Supported (bit 
+9) 
+
+--- Page 44 ---
+ Fitness Machine Service  /  Service Specification 
+Bluetooth SIG Proprietary Page 44 of 78 
+Heart Rate Present (bit 9, see 
+Section 4.9.1.13. 
+Corresponding 
+field not present 
+Corresponding 
+field present 
+Heart Rate Measurement 
+Supported (bit 10) 
+Metabolic Equivalent Present 
+(bit 10), see Section 4.9.1.14. 
+Corresponding 
+field not present 
+Corresponding 
+field present 
+Metabolic Equivalent Supported 
+(bit 11) 
+Elapsed Time Present (bit 11), 
+see Section 4.9.1.15. 
+Corresponding 
+field not present 
+Corresponding 
+field present 
+Elapsed Time Supported (bit 12) 
+Remaining Time Present (bit 
+12), see Section 4.9.1.16. 
+Corresponding 
+field not present 
+Corresponding 
+field present 
+Remaining Time Supported (bit 
+13) 
+Table 4.10: Bit Definitions for the Indoor Bike Data Characteristic 
+4.9.1.2 Instantaneous Speed Field 
+The Instantaneous Speed field shall be included in the indoor bike-related Data Record. If the Data 
+Record is split into several notifications of the Indoor Bike Data, this field shall only be included in the 
+Indoor Bike Data characteristic when the More Data bit of the Flags field is set to 0. Refer to Section 4.19 
+for additional information related to the transmission of a Data Record.  
+The Instantaneous Speed field represents the instantaneous speed of the user. 
+4.9.1.3 Average Speed Field 
+The Average Speed field may be included in the Indoor Bike Data characteristic if the device supports the 
+Average Speed feature (see Table 4.10). 
+The Average Speed field represents the average speed since the beginning of the training session. 
+4.9.1.4 Instantaneous Cadence Field 
+The Instantaneous Cadence field may be included in the Indoor Bike Data characteristic if the device 
+supports the Cadence feature (see Table 4.10). 
+The Instantaneous Cadence field represents the instantaneous cadence of the user. 
+4.9.1.5 Average Cadence Field 
+The Average Cadence field may be included in the Indoor Bike Data characteristic if the device supports 
+the Cadence feature (see Table 4.10). 
+The Average Speed field represents the average cadence since the beginning of the training session. 
+4.9.1.6 Total Distance Field 
+The Total Distance field may be included in the Indoor Bike Data characteristic if the device supports the 
+Total Distance feature (see Table 4.10). 
+The Total Distance field represents the total distance reported by the Server since the beginning of the 
+training session. 
+4.9.1.7 Resistance Level 
+The Resistance Level field may be included in the Indoor Bike Data characteristic if the device supports 
+the Resistance Level feature (see Table 4.10). 
+
+--- Page 45 ---
+ Fitness Machine Service  /  Service Specification 
+Bluetooth SIG Proprietary Page 45 of 78 
+The Resistance Level field represents the value of the current value of the resistance level of the Server. 
+4.9.1.8 Instantaneous Power 
+The Instantaneous Power field may be included in the Indoor Bike Data characteristic if the device 
+supports the Power Measurement feature (see Table 4.10). 
+The Instantaneous Power field represents the value of the instantaneous power measured by the Server. 
+4.9.1.9 Average Power 
+The Average Power field may be included in the Indoor Bike Data characteristic if the device supports the 
+Power Measurement feature (see Table 4.10). 
+The Average Power field represents the value of the average power measured by the Server since the 
+beginning of the training session. 
+4.9.1.10 Total Energy Field 
+The Total Energy field may be included in the Indoor Bike Data characteristic if the device supports the 
+Expended Energy feature (see Table 4.10). 
+The Total Energy field represents the total expended energy of a user since the training session has 
+started. 
+If this field has to be present (i.e., if the Expended Energy Present bit of the Flags field is set to 1) but the 
+Server does not support the calculation of the Total Energy, the Server shall use the special value 
+0xFFFF (i.e., decimal value of 65535 in UINT16 format), which means ‘Data Not Available’. 
+4.9.1.11 Energy per Hour Field 
+The Energy per Hour field may be included in the Indoor Bike Data characteristic if the device supports 
+the Expended Energy feature (see Table 4.10). 
+The Energy per Hour field represents the average expended energy of a user during a period of one hour.  
+If this field has to be present (i.e., if the Expended Energy Present bit of the Flag s field is set to 1) but the 
+Server does not support the calculation of the Energy per Hour, the Server shall use the special value 
+0xFFFF (i.e., decimal value of 65535 in UINT16 format), which means ‘Data Not Available’. 
+4.9.1.12 Energy per Minute Field 
+The Energy per Minute field may be included in the Indoor Bike Data characteristic if the device supports 
+the Expended Energy feature (see Table 4.10). 
+The Energy per Minute field represents the average expended energy of a user during a period of one 
+minute. 
+If this field has to be present (i.e., if the Expended Energy Present bit of the Flags field is set to 1) but the 
+Server does not support the calculation of the Energy per Minute, the Server shall use the special value 
+0xFF (i.e., decimal value of 255 in UINT16 format), which means ‘Data Not Available’. 
+
+--- Page 46 ---
+ Fitness Machine Service  /  Service Specification 
+Bluetooth SIG Proprietary Page 46 of 78 
+4.9.1.13 Heart Rate Field 
+The Heart Rate field may be included in the Indoor Bike Data characteristic if the device supports the 
+Heart Rate feature (see Table 4.10). 
+The Heart Rate field represents the current heart rate value of the user (e.g., measured via the contact 
+heart rate or any other means). 
+4.9.1.14 Metabolic Equivalent Field 
+The Metabolic Equivalent field may be included in the Indoor Bike Data characteristic if the device 
+supports the Metabolic Equivalent feature (see Table 4.10). 
+The Metabolic Equivalent field represents the metabolic equivalent of the user. 
+4.9.1.15 Elapsed Time Field 
+The Elapsed Time field may be included in the Indoor Bike Data characteristic if the device supports the 
+Elapsed Time feature (see Table 4.10). 
+The Elapsed Time field represents the elapsed time of a training session since the training session has 
+started (See Section 4.2).  
+Refer to Sections 4.1 and 4.18 for additional requirements on the presence of this field for the case where 
+a Data Record is sent in multiple notifications. 
+4.9.1.16 Remaining Time Field 
+The Remaining Time field may be included in the Indoor Bike Data characteristic if the device supports 
+the Remaining Time feature (see Table 4.10). 
+The Remaining Time field represents the remaining time of a selected training session.  
+4.10 Training Status 
+The Training Status characteristic shall be used by the Server to send the training status information to 
+the Client. Included in the characteristic value is a Flags field (for showing the presence of optional fields), 
+a Training Status field, and depending upon the contents of the Flags field, also a Training Status String. 
+The structure of the characteristic is defined below: 
+LSO MSO 
+ 
+Flags Training Status 
+Training Status 
+String 
+(if present) 
+Octet Order N/A N/A LSO…MSO 
+Data type 8bit 8bit UTF8 String 
+Size 1 octet 1 octet Variable 
+Units None None None 
+Table 4.11: Structure of the Training Status Characteristic 
+
+--- Page 47 ---
+ Fitness Machine Service  /  Service Specification 
+Bluetooth SIG Proprietary Page 47 of 78 
+4.10.1 Characteristic Behavior 
+When the Training Status characteristic is configured for notification via the Client Characteristic 
+Configuration descriptor and a new training status is available (e.g., when there is a transition in the 
+training program), this characteristic shall be notified. 
+When read, the Training Status characteristic returns a value that is used by a Client to determine the 
+current training status of the Server. 
+The Training Status characteristic contains time-sensitive data, thus the requirements for time-sensitive 
+data and data storage defined in Section 4.18 apply. 
+4.10.1.1 Flags Field 
+The Flags field shall be included in the Training Status characteristic. 
+Reserved for Future Use (RFU) bits in the Flags fields shall be set to 0. 
+The bits of the Flags field and their function are shown in Table 4.12. 
+Bit Definition 
+0 Training Status String present: 
+0 = False 
+1 = True 
+1 Extended String present: 
+0 = False 
+1 = True 
+2-7 Reserved for Future Use 
+Table 4.12: Bit Definitions for the Training State Characteristic 
+For low energy, the Training Status characteristic may exceed the current MTU size (i.e., if the Training 
+Status String field exceeds the negotiated MTU size minus 5 octets). If the characteristic size exceeds the 
+current MTU size, the Server shall set the Extended String bit of the Flags field to 1 to inform the Client 
+that additional characters are available and should be read via the appropriate GATT procedure (e.g., 
+GATT Read Long procedure). The Server should not update the value more than once in a ten seconds 
+period if the Extended String present bit is set to 1 in order to give enough time to the Client to read this 
+value. Only the first (ATT_MTU-3) octets of the characteristic value can be included in a notification, but 
+the entire string may be read by using the GATT Read Long sub-procedure. 
+For BR/EDR, this restriction does not exist due to a larger MTU size. 
+4.10.1.2 Training Status Field 
+The Training Status field shall be included in the Training Status characteristic. 
+The Training Status field represents the current training state while a user is exercising. The values of the 
+Training Status field are defined in Table 4.13. 
+ 
+
+--- Page 48 ---
+ Fitness Machine Service  /  Service Specification 
+Bluetooth SIG Proprietary Page 48 of 78 
+Value Definition 
+0x00 Other 
+0x01 Idle 
+0x02 Warming Up 
+0x03 Low Intensity Interval 
+0x04 High Intensity Interval 
+0x05 Recovery Interval 
+0x06 Isometric 
+0x07 Heart Rate Control 
+0x08 Fitness Test 
+0x09 Speed Outside of Control Region - Low (increase speed to return to controllable 
+region) 
+0x0A Speed Outside of Control Region - High (decrease speed to return to controllable 
+region) 
+0x0B Cool Down 
+0x0C Watt Control 
+0x0D Manual Mode (Quick Start) 
+0x0E Pre-Workout 
+0x0F Post-Workout 
+0x10-0xFF Reserved for Future Use 
+Table 4.13: Training Status Field Definition 
+4.10.1.3 Training Status String Field 
+The Training Status String field may be included in the Training Status characteristic. 
+The Training Status String field is a string-based field that can be used to give more specific information 
+related to the training status.  
+4.11 Supported Speed Range 
+The Supported Speed Range characteristic shall be exposed by the Server if the Speed Target Setting 
+feature is supported. 
+The Supported Speed Range characteristic is used to send the supported speed range as well as the 
+minimum speed increment supported by the Server. Included in the characteristic value are a Minimum 
+Speed field, a Maximum Speed field, and a Minimum Increment field as defined on the Bluetooth SIG 
+Assigned Numbers webpage [2]. 
+4.11.1 Characteristic Behavior 
+When read, the Supported Speed Range characteristic returns a value that is used by a Client to 
+determine the valid range that can be used in order to control the speed of the Server. 
+
+--- Page 49 ---
+ Fitness Machine Service  /  Service Specification 
+Bluetooth SIG Proprietary Page 49 of 78 
+4.12 Supported Inclination Range 
+The Supported Inclination Range characteristic shall be exposed by the Server if the Inclination Target 
+Setting feature is supported. 
+The Supported Inclination Range characteristic is used to send the supported inclination range as well as 
+the minimum inclination increment supported by the Server. Included in the characteristic value are a 
+Minimum Inclination field, a Maximum Inclination field, and a Minimum Increment field as defined on the 
+Bluetooth SIG Assigned Numbers webpage [2]. 
+4.12.1 Characteristic Behavior 
+When read, the Supported Inclination Range characteristic returns a value that is used by a Client to 
+determine the valid range that can be used in order to control the inclination of the Server. 
+4.13 Supported Resistance Level Range 
+The Supported Resistance Level Range characteristic shall be exposed by the Server if the Resistance 
+Control Target Setting feature is supported. 
+The Supported Resistance Level Range characteristic is used to send the supported resistance level 
+range as well as the minimum resistance increment supported by the Server. Included in the 
+characteristic value are a Minimum Resistance Level field, a Maximum Resistance Level field, and a 
+Minimum Increment field as defined on the Bluetooth SIG Assigned Numbers webpage [2]. 
+4.13.1 Characteristic Behavior 
+When read, the Supported Resistance Level Range characteristic returns a value that is used by a Client 
+to determine the valid range that can be used in order to control the resistance level of the Server. 
+4.14 Supported Power Range 
+The Supported Power Range characteristic shall be exposed by the Server if the Power Target Setting 
+feature is supported. 
+The Supported Power Range characteristic is used to send the supported power range as well as the 
+minimum power increment supported by the Server. Included in the characteristic value are a Minimum 
+Power field, a Maximum Power field, and a Minimum Increment field as defined on the Bluetooth SIG 
+Assigned Numbers webpage [2]. Note that the Minimum Power field and the Maximum Power field 
+represent the extreme values supported by the Server and are not related to , for example, the current 
+speed of the Server. 
+4.14.1 Characteristic Behavior 
+When read, the Supported Power Range characteristic returns a value that is used by a Client to 
+determine the valid range that can be used in order to control the power reference  of the Server. 
+4.15 Supported Heart Rate Range 
+The Supported Heart Rate Range characteristic shall be exposed by the Server if the Heart Rate Target 
+Setting feature is supported.  
+
+--- Page 50 ---
+ Fitness Machine Service  /  Service Specification 
+Bluetooth SIG Proprietary Page 50 of 78 
+The Supported Heart Rate Range characteristic is used to send the supported Heart Rate range as well 
+as the minimum Heart Rate increment supported by the Server. Included in the characteristic value are a 
+Minimum Heart Rate field, a Maximum Heart Rate field, and a Minimum Increment field as defined on the 
+Bluetooth SIG Assigned Numbers webpage [2]. 
+4.15.1 Characteristic Behavior 
+When read, the Supported Heart Rate Range characteristic returns a value that is used by a Client to 
+determine the valid range that can be used in order to set the heart rate target for a given training 
+session. 
+4.16 Fitness Machine Control Point 
+The Server may expose the Fitness Machine Control Point. 
+The Fitness Machine Control Point characteristic is used to request a specific function to be executed on 
+the Server. 
+The format of the Fitness Machine Control Point characteristic is defined in Table 4.14. 
+ LSO MSO 
+ Op Code 
+(see Table 4.15) 
+Parameter 
+(see Table 4.15) 
+Byte Order N/A LSO...MSO 
+Data type UINT8 Variable 
+Size 1 octet 0 to 18 octets 
+Units None None 
+Table 4.14: Fitness Machine Control Point Characteristic Format 
+The Op Codes, Parameters, and requirements for the Fitness Machine Control Point are defined in 
+Section 4.16.1. 
+4.16.1 Fitness Machine Control Point Procedure Requirements 
+A Client shall use the GATT Write Characteristic Value sub-procedure to initiate a procedure defined in 
+Table 4.15. 
+The Op Codes, Parameters, and their requirements are defined in Table 4.15. 
+Op Code 
+Value 
+Requirement Definition Parameter Value Description 
+0x00 M Request Control N/A Initiates the procedure to 
+request the control of a fitness 
+machine. 
+The response to this control 
+point is Op Code 0x80 followed 
+by the appropriate Parameter 
+Value. 
+
+--- Page 51 ---
+ Fitness Machine Service  /  Service Specification 
+Bluetooth SIG Proprietary Page 51 of 78 
+Op Code 
+Value 
+Requirement Definition Parameter Value Description 
+0x01 M Reset, 
+see Section 
+4.16.2.2 
+N/A Initiates the procedure to reset 
+the controllable settings of a 
+fitness machine. 
+The response to this control 
+point is Op Code 0x80 followed 
+by the appropriate Parameter 
+Value. 
+0x02 C.1 Set Target Speed, 
+see Section 
+4.16.2.3 
+Target Speed,  
+UINT16, in km/h 
+with a resolution of 
+0.01 km/h 
+Initiate the procedure to set the 
+target speed of the Server. The 
+desired target speed is sent as 
+parameters to this op code. 
+The response to this control 
+point is Op Code 0x80 followed 
+by the appropriate Parameter 
+Value. 
+0x03 C.2 Set Target 
+Inclination, 
+see Section 
+4.16.2.4 
+Target Inclination,  
+SINT16, in Percent 
+with a resolution of 
+0.1 % 
+Initiate the procedure to set the 
+target inclination of the Server. 
+The desired target inclination is 
+sent as parameters to this op 
+code. 
+The response to this control 
+point is Op Code 0x80 followed 
+by the appropriate Parameter 
+Value. 
+0x04 C.3 Set Target 
+Resistance Level, 
+see Section 
+4.16.2.5 
+Target Resistance 
+Level,  
+UINT8, unitless 
+with a resolution of 
+0.1. 
+Initiate the procedure to set the 
+target resistance level of the 
+Server. The desired target 
+resistance level is sent as 
+parameters to this op code. 
+The response to this control 
+point is Op Code 0x80 followed 
+by the appropriate Parameter 
+Value. 
+0x05 C.4 Set Target Power, 
+see Section 
+4.16.2.6 
+Target Power,  
+SINT16, in Watt 
+with a resolution of 
+1 W. 
+Initiate the procedure to set the 
+target power of the Server. The 
+desired target power is sent as 
+parameters to this op code. 
+The response to this control 
+point is Op Code 0x80 followed 
+by the appropriate Parameter 
+Value. 
+
+--- Page 52 ---
+ Fitness Machine Service  /  Service Specification 
+Bluetooth SIG Proprietary Page 52 of 78 
+Op Code 
+Value 
+Requirement Definition Parameter Value Description 
+0x06 C.5 Set Target Heart 
+Rate, 
+see Section 
+4.16.2.7 
+Target Heart Rate,  
+UINT8, in BPM 
+with a resolution of 
+1 BPM. 
+Initiate the procedure to set the 
+target heart rate of the Server. 
+The desired target heart rate is 
+sent as parameters to this op 
+code. 
+The response to this control 
+point is Op Code 0x80 followed 
+by the appropriate Parameter 
+Value. 
+0x07 M Start or Resume, 
+see Section 
+4.16.2.8 
+N/A Initiate the procedure to start or 
+resume a training session on 
+the Server. 
+The response to this control 
+point is Op Code 0x80 followed 
+by the appropriate Parameter 
+Value. 
+0x08 M Stop or Pause, 
+see Section 
+4.16.2.9 
+Control 
+Information, see 
+Section 4.16.2.9. 
+Initiate the procedure to stop or 
+pause a training session on the 
+Server. 
+The response to this control 
+point is Op Code 0x80 followed 
+by the appropriate Parameter 
+Value. 
+0x09 C.6 Set Targeted 
+Expended Energy, 
+see Section 
+4.16.2.10 
+Targeted 
+Expended Energy,  
+UINT16, in 
+Calories with a 
+resolution of 1 
+Calorie. 
+Set the targeted expended 
+energy for a training session on 
+the Server. 
+The response to this control 
+point is Op Code 0x80 followed 
+by the appropriate Parameter 
+Value. 
+0x0A C.7 Set Targeted 
+Number of Steps, 
+see Section 
+4.16.2.11 
+Targeted Number 
+of Steps,  
+UINT16, in Steps 
+with a resolution of 
+1 Step. 
+Set the targeted number of 
+steps for a training session on 
+the Server. 
+The response to this control 
+point is Op Code 0x80 followed 
+by the appropriate Parameter 
+Value. 
+
+--- Page 53 ---
+ Fitness Machine Service  /  Service Specification 
+Bluetooth SIG Proprietary Page 53 of 78 
+Op Code 
+Value 
+Requirement Definition Parameter Value Description 
+0x0B C.8 Set Targeted 
+Number of 
+Strides, see 
+Section 4.16.2.12 
+Targeted Number 
+of Strides,  
+UINT16, in Stride 
+with a resolution of 
+1 Stride. 
+Set the targeted number of 
+strides for a training session on 
+the Server. 
+The response to this control 
+point is Op Code 0x80 followed 
+by the appropriate Parameter 
+Value. 
+0x0C C.9 Set Targeted 
+Distance, see 
+Section 4.16.2.13 
+Targeted Distance,  
+UINT24, in Meters 
+with a resolution of 
+1 Meter. 
+Set the targeted distance for a 
+training session on the Server. 
+The response to this control 
+point is Op Code 0x80 followed 
+by the appropriate Parameter 
+Value. 
+0x0D C.10 Set Targeted 
+Training Time, 
+see Section 
+4.16.2.14 
+Targeted Training 
+Time,  
+UINT16, in 
+Seconds with a 
+resolution of 1 
+Second. 
+Set the targeted training time 
+for a training session on the 
+Server. 
+The response to this control 
+point is Op Code 0x80 followed 
+by the appropriate Parameter 
+Value. 
+0x0E C.11 Set Targeted 
+Time in Two Heart 
+Rate Zones, see 
+Section 4.16.2.15 
+Targeted Time 
+Array, see Section 
+4.16.2.15. 
+Set the targeted time in two 
+heart rate zones for a training 
+session on the Server. 
+The response to this control 
+point is Op Code 0x80 followed 
+by the appropriate Parameter 
+Value. 
+0x0F C.12 Set Targeted 
+Time in Three 
+Heart Rate Zones, 
+see Section 
+4.16.2.16 
+Targeted Time 
+Array, see Section 
+4.16.2.16. 
+Set the targeted time in three 
+heart rate zones for a training 
+session on the Server. 
+The response to this control 
+point is Op Code 0x80 followed 
+by the appropriate Parameter 
+Value. 
+0x10 C.13 Set Targeted 
+Time in Five Heart 
+Rate Zones, see 
+Section 4.16.2.17 
+Targeted Time 
+Array, see Section 
+4.16.2.17. 
+Set the targeted time in five 
+heart rate zones for a training 
+session on the Server. 
+The response to this control 
+point is Op Code 0x80 followed 
+by the appropriate Parameter 
+Value. 
+
+--- Page 54 ---
+ Fitness Machine Service  /  Service Specification 
+Bluetooth SIG Proprietary Page 54 of 78 
+Op Code 
+Value 
+Requirement Definition Parameter Value Description 
+0x11 C.14 Set Indoor Bike 
+Simulation 
+Parameters, see 
+Section 4.16.2.18 
+Simulation 
+Parameter Array, 
+see Section 
+4.16.2.18 
+Set the simulation parameters 
+for a training session on the 
+Server. 
+The response to this control 
+point is Op Code 0x80 followed 
+by the appropriate Parameter 
+Value. 
+0x12 O Set Wheel 
+Circumference, 
+see Section 
+4.16.2.19 
+Wheel 
+Circumference, 
+UINT16, in 
+Millimeters with 
+resolution of 0.1 
+Millimeter 
+Set the wheel circumference for 
+a training session on the 
+Server. 
+The response to this control 
+point is Op Code 0x80 followed 
+by the appropriate Parameter 
+Value. 
+0x13 O Spin Down 
+Control, see 
+Section 4.16.2.20 
+Control Parameter, 
+see Section 
+4.16.2.20 
+Control the spin down 
+procedure of a Server. 
+The response to this control 
+point is Op Code 0x80 followed 
+by the appropriate Parameter 
+Value. 
+0x14 C.15 Set Targeted 
+Cadence 
+Targeted Cadence,  
+UINT16, in 
+1/minute with a 
+resolution of 0.5 
+1/minute. 
+Set the targeted cadence for a 
+training session on the Server. 
+The response to this control 
+point is Op Code 0x80 followed 
+by the appropriate Parameter 
+Value. 
+0x15-0x7F N/A Reserved for 
+Future Use 
+N/A N/A 
+0x80 M Response Code, 
+see Section 
+4.16.2.22 
+See Section 
+4.16.2.22 
+Used to identify the response to 
+this Control Point. 
+0x81-0xFF N/A Reserved for 
+Future Use 
+N/A N/A 
+Table 4.15: Fitness Machine Control Point Procedure Requirements 
+C.1: Mandatory to support if the Speed Target Setting feature is supported; otherwise Excluded. 
+C.2: Mandatory to support if the Inclination Target Setting feature is supported; otherwise Excluded. 
+C.3: Mandatory to support if the Resistance Target Setting feature is supported; otherwise Excluded. 
+C.4: Mandatory to support if the Power Target Setting feature is supported; otherwise Excluded. 
+C.5: Mandatory to support if the Heart Rate Target Setting feature is supported; otherwise Excluded. 
+C.6: Mandatory to support if the Targeted Energy Expended Configuration feature is supported; otherwise Excluded. 
+C.7: Mandatory to support if the Targeted Number of Steps Configuration feature is supported; otherwise Excluded. 
+
+--- Page 55 ---
+ Fitness Machine Service  /  Service Specification 
+Bluetooth SIG Proprietary Page 55 of 78 
+C.8: Mandatory to support if the Targeted Number of Strides Configuration feature is supported; otherwise Excluded. 
+C.9: Mandatory to support if the Targeted Distance Configuration feature is supported; otherwise Excluded. 
+C.10: Mandatory to support if the Targeted Training Time Configuration feature is supported; otherwise Excluded. 
+C.11: Mandatory to support if the Targeted Time in Two Heart Rate Zones Configuration feature is supported; 
+otherwise Excluded. 
+C.12: Mandatory to support if the Targeted Time in Three Heart Rate Zones Configuration feature is supported; 
+otherwise Excluded. 
+C.13: Mandatory to support if the Targeted Time in Five Heart Rate Zones Configuration feature is supported; 
+otherwise Excluded. 
+C.14: Mandatory to support if the Indoor Bike Simulation Parameters feature is supported; otherwise Excluded.  
+C.15: Mandatory to support if the Set Targeted Cadence feature is supported; otherwise Excluded. 
+4.16.2 Fitness Machine Control Point Behavioral Description 
+The Fitness Machine Control Point is used by a Client to control certain behaviors of the Server. 
+Procedures are triggered by a Write to this characteristic value that includes an Op Code specifying the 
+operation (see Table 4.15), which may be followed by a Parameter that is valid within the context of that 
+Op Code. 
+Each procedure defined in Sections 4.16.2.2 to 4.16.2.20 requires control permission from the Server. 
+The Request Control procedure defined in Section 4.16.2.1 is used to request the control of the Server. 
+4.16.2.1 Request Control Procedure 
+When the Request Control Op Code is written to the Fitness Machine Control Point and the Result Code 
+is ‘Success’, the Server shall allow the Client to perform any supported control procedures (see Sections 
+4.16.2.2 to 4.16.2.20). 
+The response shall be indicated when the Reset Procedure is completed using the Response Code Op 
+Code and the Request Op Code, along with the appropriate Result Code as defined in Section 4.16.2.22.  
+The control permission remains valid until the connection is terminated, the notification of the Fitness 
+Machine Status is sent with the value set to Control Permission Lost (see Section 4.17), or the Reset 
+procedure (see Section 4.16.2.2) is initiated by the Client. 
+If the operation results in an error condition where the Fitness Machine Control Point cannot be indicated 
+(e.g., the Client Characteristic Configuration descriptor is not configured for indication or if a procedure is 
+already in progress), see Section 4.16.3 for details on handling this condition. 
+4.16.2.2 Reset Procedure 
+This procedure requires control permission in order to be executed. Refer to Section 4.16.2.1 for more 
+information on the Request Control procedure. 
+When the Reset Op Code is written to the Fitness Machine Control Point and the Result Code is 
+‘Success’, the Server shall set the control parameters to their respective default values (e.g., target speed 
+set to 0, inclination set to 0). In addition, if the Fitness Machine supports the Remaining Time and 
+Elapsed Time features, it shall set the time-related fields to 0. The Training Status characteristic value 
+shall also be set to Idle (0x01). 
+
+--- Page 56 ---
+ Fitness Machine Service  /  Service Specification 
+Bluetooth SIG Proprietary Page 56 of 78 
+The response shall be indicated when the Reset Procedure is completed using the Response Code Op 
+Code, the Request Op Code, along with the appropriate Result Code as defined in Section 4.16.2.22. 
+If the operation results in an error condition where the Fitness Machine Control Point cannot be indicated 
+(e.g., the Client Characteristic Configuration descriptor is not configured for indication or if a procedure is 
+already in progress), see Section 4.16.3 for details on handling this condition. 
+4.16.2.3 Set Target Speed Procedure 
+This procedure requires control permission in order to be executed. Refer to Section 4.16.2.1 for more 
+information on the Request Control procedure. 
+When the Set Target Speed Op Code is written to the Fitness Machine Control Point and the Result Code 
+is ‘Success’, the Server shall set the Target Speed to the value sent as a Parameter. 
+The response shall be indicated when the Set Target Speed Procedure is completed using the Response 
+Code Op Code and the Request Op Code, along with the appropriate Result Code as defined in Section 
+4.16.2.22. 
+If the operation results in an error condition where the Fitness Machine Control Point cannot be indicated 
+(e.g., the Client Characteristic Configuration descriptor is not configured for indication or if a procedure is 
+already in progress), see Section 4.16.3 for details on handling this condition. 
+4.16.2.4 Set Target Inclination Procedure 
+This procedure requires control permission in order to be executed. Refer to Section 4.16.2.1 for more 
+information on the Request Control procedure. 
+When the Set Target Inclination Op Code is written to the Fitness Machine Control Point and the Result 
+Code is ‘Success’, the Server shall set the target inclination to the value sent as a Parameter. A positive 
+value means that the user will feel as if they are going uphill and a negative value means that the user will 
+feel as if they are going downhill. 
+The response shall be indicated when the Set Target Inclination Procedure is completed using the 
+Response Code Op Code and the Request Op Code, along with the appropriate Result Code as defined 
+in Section 4.16.2.22. 
+If the operation results in an error condition where the Fitness Machine Control Point cannot be indicated 
+(e.g., the Client Characteristic Configuration descriptor is not configured for indication or if a procedure is 
+already in progress), see Section 4.16.3 for details on handling this condition. 
+4.16.2.5 Set Target Resistance Level Procedure 
+This procedure requires control permission in order to be executed. Refer to Section 4.16.2.1 for more 
+information on the Request Control procedure. 
+When the Set Target Resistance Level Op Code is written to the Fitness Machine Control Point and the 
+Result Code is ‘Success’, the Server shall set the target resistance level to the value sent as a 
+Parameter. 
+
+--- Page 57 ---
+ Fitness Machine Service  /  Service Specification 
+Bluetooth SIG Proprietary Page 57 of 78 
+The response shall be indicated when the Set Target Resistance Level Procedure is completed using the 
+Response Code Op Code and the Request Op Code, along with the appropriate Result Code as defined 
+in Section 4.16.2.22. 
+If the operation results in an error condition where the Fitness Machine Control Point cannot be indicated 
+(e.g., the Client Characteristic Configuration descriptor is not configured for indication or if a procedure is 
+already in progress), see Section 4.16.3 for details on handling this condition. 
+4.16.2.6 Set Target Power Procedure 
+This procedure requires control permission in order to be executed. Refer to Section 4.16.2.1 for more 
+information on the Request Control procedure. 
+When the Set Target Power Op Code is written to the Fitness Machine Control Point and the Result Code 
+is ‘Success’, the Server shall set the target power to the value sent as a Parameter. 
+The response shall be indicated when the Set Target Power Procedure is completed using the Response 
+Code Op Code and the Request Op Code, along with the appropriate Result Code as defined in Section 
+4.16.2.22. 
+If the operation results in an error condition where the Fitness Machine Control Point cannot be indicated 
+(e.g., the Client Characteristic Configuration descriptor is not configured for indication or if a procedure is 
+already in progress), see Section 4.16.3 for details on handling this condition. 
+4.16.2.7 Set Target Heart Rate Procedure 
+This procedure requires control permission in order to be executed. Refer to Section 4.16.2.1 for more 
+information on the Request Control procedure. 
+When the Set Target Heart Rate Op Code is written to the Fitness Machine Control Point and the Result 
+Code is ‘Success’, the Server shall set the target heart rate to the value sent as a Parameter. 
+The response shall be indicated when the Set Target Heart Rate Procedure is completed using the 
+Response Code Op Code and the Request Op Code, along with the appropriate Result Code as defined 
+in Section 4.16.2.22. 
+If the operation results in an error condition where the Fitness Machine Control Point cannot be indicated 
+(e.g., the Client Characteristic Configuration descriptor is not configured for indication or if a procedure is 
+already in progress), see Section 4.16.3 for details on handling this condition. 
+4.16.2.8 Start or Resume Procedure 
+This procedure requires control permission in order to be executed. Refer to Section 4.16.2.1 for more 
+information on the Request Control procedure. 
+When the Start or Resume Op Code is written to the Fitness Machine Control Point and the Result Code 
+is ‘Success’, the Server shall initiate the start procedure of the Fitness Machine. 
+If the Fitness Machine supports the Remaining Time and Elapsed Time features, the Fitness Machine 
+shall update the related Remaining Time and Elapsed Time fields at a regular interval (e.g., every 
+second). In order to set the time-related fields to zero, the Reset procedure defined in Section 4.16.2.2 
+shall be used. 
+
+--- Page 58 ---
+ Fitness Machine Service  /  Service Specification 
+Bluetooth SIG Proprietary Page 58 of 78 
+The response shall be indicated when the Start or Resume Procedure is completed using the Response 
+Code Op Code and the Request Op Code, along with the appropriate Result Code as defined in Section 
+4.16.2.22. 
+If the operation results in an error condition where the Fitness Machine Control Point cannot be indicated 
+(e.g., the Client Characteristic Configuration descriptor is not configured for indication or if a procedure is 
+already in progress), see Section 4.16.3 for details on handling this condition. 
+4.16.2.9 Stop or Pause Procedure 
+This procedure requires control permission in order to be executed. Refer to Section 4.16.2.1 for more 
+information on the Request Control procedure. 
+When the Stop or Pause Op Code is written to the Fitness Machine Control Point and the Result Code is 
+‘Success’, the Server shall initiate the stop or pause procedure of the Fitness Machine depending on the 
+Control Information Parameter value. The format of the Control Information Parameter value is UINT8, 
+and the supported values are defined in the table below: 
+Value Control Information 
+0x00 Reserved for Future Use 
+0x01 Stop 
+0x02 Pause 
+0x03-0xFF Reserved for Future Use 
+Table 4.16: Control Information Parameter Value for Stop or Pause Procedure 
+If the Fitness Machine supports the Remaining Time and Elapsed Time features, the Fitness Machine 
+shall stop updating the related Remaining Time and Elapsed Time fields. In order to set the time-related 
+fields to zero, the Reset procedure defined in Section 4.16.2.2 shall be used. 
+The response shall be indicated when the Stop or Pause Procedure is completed using the Response 
+Code Op Code and the Request Op Code, along with the appropriate Result Code as defined in Section 
+4.16.2.22. 
+If the operation results in an error condition where the Fitness Machine Control Point cannot be indicated 
+(e.g., the Client Characteristic Configuration descriptor is not configured for indication or if a procedure is 
+already in progress), see Section 4.16.3 for details on handling this condition. 
+4.16.2.10 Set Targeted Expended Energy Procedure 
+This procedure requires control permission in order to be executed. Refer to Section 4.16.2.1 for more 
+information on the Request Control procedure. 
+When the Set Targeted Expended Energy Op Code is written to the Fitness Machine Control Point and 
+the Result Code is ‘Success’, the Server shall use the value sent as a Parameter as the new targeted 
+expended energy. 
+The response shall be indicated when the Set Targeted Expended Energy Procedure is completed using 
+the Response Code Op Code and the Request Op Code, along with the appropriate Result Code as 
+defined in Section 4.16.2.22. 
+
+--- Page 59 ---
+ Fitness Machine Service  /  Service Specification 
+Bluetooth SIG Proprietary Page 59 of 78 
+If the operation results in an error condition where the Fitness Machine Control Point cannot be indicated 
+(e.g., the Client Characteristic Configuration descriptor is not configured for indication or if a procedure is 
+already in progress), see Section 4.16.3 for details on handling this condition. 
+4.16.2.11 Set Targeted Number of Steps Procedure 
+This procedure requires control permission in order to be executed. Refer to Section 4.16.2.1 for more 
+information on the Request Control procedure. 
+When the Set Targeted Number of Steps Op Code is written to the Fitness Machine Control Point and the 
+Result Code is ‘Success’, the Server shall use the value sent as a Parameter as the new targeted number 
+of steps. 
+The response shall be indicated when the Set Targeted Number of Steps Procedure is completed using 
+the Response Code Op Code and the Request Op Code, along with the appropriate Result Code as 
+defined in Section 4.16.2.22. 
+If the operation results in an error condition where the Fitness Machine Control Point cannot be indicated 
+(e.g., the Client Characteristic Configuration descriptor is not configured for indication or if a procedure is 
+already in progress), see Section 4.16.3 for details on handling this condition. 
+4.16.2.12 Set Targeted Number of Strides Procedure 
+This procedure requires control permission in order to be executed. Refer to Section 4.16.2.1 for more 
+information on the Request Control procedure. 
+When the Set Targeted Number of Strides Op Code is written to the Fitness Machine Control Point and 
+the Result Code is ‘Success’, the Server shall use the value sent as a Parameter as the new targeted 
+number of strides. 
+The response shall be indicated when the Set Targeted Number of Strides Procedure is completed using 
+the Response Code Op Code and the Request Op Code, along with the appropriate Result Code as 
+defined in Section 4.16.2.22. 
+If the operation results in an error condition where the Fitness Machine Control Point cannot be indicated 
+(e.g., the Client Characteristic Configuration descriptor is not configured for indication or if a procedure is 
+already in progress), see Section 4.16.3 for details on handling this condition. 
+4.16.2.13 Set Targeted Distance Procedure 
+This procedure requires control permission in order to be executed. Refer to Section 4.16.2.1 for more 
+information on the Request Control procedure. 
+When the Set Targeted Distance Op Code is written to the Fitness Machine Control Point and the Result 
+Code is ‘Success’, the Server shall use the value sent as a Parameter as the new targeted distance. 
+The response shall be indicated when the Set Targeted Distance Procedure is completed using the 
+Response Code Op Code and the Request Op Code, along with the appropriate Result Code as defined 
+in Section 4.16.2.22. 
+
+--- Page 60 ---
+ Fitness Machine Service  /  Service Specification 
+Bluetooth SIG Proprietary Page 60 of 78 
+If the operation results in an error condition where the Fitness Machine Control Point cannot be indicated 
+(e.g., the Client Characteristic Configuration descriptor is not configured for indication or if a procedure is 
+already in progress), see Section 4.16.3 for details on handling this condition. 
+4.16.2.14 Set Targeted Training Time Procedure 
+This procedure requires control permission in order to be executed. Refer to Section 4.16.2.1 for more 
+information on the Request Control procedure. 
+When the Set Targeted Training Time Op Code is written to the Fitness Machine Control Point and the 
+Result Code is ‘Success’, the Server shall use the value sent as a Parameter as the new targeted training 
+time. 
+The response shall be indicated when the Set Targeted Training Time Procedure is completed using the 
+Response Code Op Code and the Request Op Code, along with the appropriate Result Code as defined 
+in Section 4.16.2.22. 
+If the operation results in an error condition where the Fitness Machine Control Point cannot be indicated 
+(e.g., the Client Characteristic Configuration descriptor is not configured for indication or if a procedure is 
+already in progress), see Section 4.16.3 for details on handling this condition. 
+4.16.2.15 Set Targeted Time in Two Heart Rate Zones Procedure 
+This procedure requires control permission in order to be executed. Refer to Section 4.16.2.1 for more 
+information on the Request Control procedure. 
+When the Set Targeted Training Time in Two Heart Rate Zones Op Code is written to the Fitness 
+Machine Control Point and the Result Code is ‘Success’, the Server shall use the values sent as a 
+Parameter as the new targeted time in each heart rate zone. The format of the Targeted Time Array 
+Parameter is described below: 
+ LSO MSO 
+ Targeted Time in Fat Burn Zone Targeted Time in Fitness Zone 
+Byte Order LSO...MSO LSO...MSO 
+Data type UINT16 UINT16 
+Size 2 octet 2 octets 
+Units Second Second 
+Table 4.17: Targeted Time Array Parameter Format for Set Targeted Training Time in Two Heart Rate Zones 
+Procedure 
+The response shall be indicated when the Set Targeted Time in Two Heart Rate Zones Procedure is 
+completed using the Response Code Op Code and the Request Op Code, along with the appropriate 
+Result Code as defined in Section 4.16.2.22. 
+If the operation results in an error condition where the Fitness Machine Control Point cannot be indicated 
+(e.g., the Client Characteristic Configuration descriptor is not configured for indication or if a procedure is 
+already in progress), see Section 4.16.3 for details on handling this condition. 
+
+--- Page 61 ---
+ Fitness Machine Service  /  Service Specification 
+Bluetooth SIG Proprietary Page 61 of 78 
+4.16.2.16 Set Targeted Time in Three Zone Heart Rate Procedure 
+This procedure requires control permission in order to be executed. Refer to Section 4.16.2.1 for more 
+information on the Request Control procedure. 
+When the Set Targeted Training Time in Three Heart Rate Zones Op Code is written to the Fitness 
+Machine Control Point and the Result Code is ‘Success’, the Server shall use the values sent as a 
+Parameter as the new targeted time in each heart rate zone. The format of the Targeted Time Array 
+Parameter is described below: 
+ LSO MSO 
+ Targeted Time in Light 
+Zone 
+Targeted Time in Moderate 
+Zone 
+Targeted Time in Hard 
+Zone 
+Byte Order LSO...MSO LSO...MSO LSO...MSO 
+Data type UINT16 UINT16 UINT16 
+Size 2 octet 2 octets 2 octets 
+Units Second Second Second 
+Table 4.18: Targeted Time Array Parameter Format for Set Targeted Training Time in Three Heart Rate Zones 
+Procedure 
+The response shall be indicated when the Set Targeted Time in Three Heart Rate Zones Procedure is 
+completed using the Response Code Op Code and the Request Op Code, along with the appropriate 
+Result Code as defined in Section 4.16.2.22. 
+If the operation results in an error condition where the Fitness Machine Control Point cannot be indicated 
+(e.g., the Client Characteristic Configuration descriptor is not configured for indication or if a procedure is 
+already in progress), see Section 4.16.3 for details on handling this condition. 
+4.16.2.17 Set Targeted Time in Five Zone Heart Rate Procedure 
+This procedure requires control permission in order to be executed. Refer to Section 4.16.2.1 for more 
+information on the Request Control procedure. 
+When the Set Targeted Training Time in Five Heart Rate Zones Op Code is written to the Fitness 
+Machine Control Point and the Result Code is ‘Success’, the Server shall use the values sent as a 
+Parameter as the new targeted time in each heart rate zone. The format of the Targeted Time Array 
+Parameter is described below: 
+ LSO MSO 
+ Targeted Time in 
+Very Light Zone 
+Targeted Time in 
+Light Zone 
+Targeted Time in 
+Moderate Zone 
+Targeted Time in 
+Hard Zone 
+Targeted Time 
+in Maximum 
+Zone 
+Byte Order LSO...MSO LSO...MSO LSO...MSO LSO...MSO LSO...MSO 
+Data type UINT16 UINT16 UINT16 UINT16 UINT16 
+Size 2 octet 2 octets 2 octets 2 octets 2 octets 
+Units Second Second Second Second Second 
+
+--- Page 62 ---
+ Fitness Machine Service  /  Service Specification 
+Bluetooth SIG Proprietary Page 62 of 78 
+Table 4.19: Targeted Time Array Parameter Format for Set Targeted Training Time in Five Heart Rate Zones 
+Procedure 
+The response shall be indicated when the Set Targeted Time in Five Heart Rate Zones Procedure is 
+completed using the Response Code Op Code and the Request Op Code, along with the appropriate 
+Result Code as defined in Section 4.16.2.22. 
+If the operation results in an error condition where the Fitness Machine Control Point cannot be indicated 
+(e.g., the Client Characteristic Configuration descriptor is not configured for indication or if a procedure is 
+already in progress), see Section 4.16.3 for details on handling this condition. 
+4.16.2.18 Set Indoor Bike Simulation Parameters Procedure 
+This procedure requires control permission in order to be executed. Refer to Section 4.16.2.1 for more 
+information on the Request Control procedure. 
+When the Set Indoor Bike Simulation Parameter Op Code is written to the Fitness Machine Control Point 
+and the Result Code is ‘Success’, the Server shall use the parameters values sent as a Parameter as the 
+new simulation parameters. The format of the Simulation Parameter Array is described below: 
+ LSO MSO 
+ Wind Speed Grade Crr (Coefficient of 
+Rolling Resistance) 
+Cw (Wind Resistance 
+Coefficient) 
+Byte Order LSO...MSO LSO...MSO LSO...MSO LSO...MSO 
+Data type SINT16 SINT16 UINT8 UINT8 
+Size 2 octet 2 octets 1 octets 1 octets 
+Units Meters Per Second (mps) Percentage Unitless Kilogram per Meter 
+(Kg/m) 
+Resolution 0.001 0.01 0.0001 0.01 
+Table 4.20: Simulation Parameter Array Format for Set Indoor Bike Simulation Parameters Procedure 
+The response shall be indicated when the Set Indoor Bike Simulation Mode Procedure is completed using 
+the Response Code Op Code and the Request Op Code, along with the appropriate Result Code as 
+defined in Section 4.16.2.22. 
+If the operation results in an error condition where the Fitness Machine Control Point cannot be indicated 
+(e.g., the Client Characteristic Configuration descriptor is not configured for indication or if a procedure is 
+already in progress), see Section 4.16.3 for details on handling this condition. 
+4.16.2.19 Set Wheel Circumference Procedure 
+This procedure requires control permission in order to be executed. Refer to Section 4.16.2.1 for more 
+information on the Request Control procedure. 
+When the Set Wheel Circumference Op Code is written to the Fitness Machine Control Point and the 
+Result Code is ‘Success’, the Server shall use the parameter value sent as a Parameter as the new 
+wheel circumference. 
+
+--- Page 63 ---
+ Fitness Machine Service  /  Service Specification 
+Bluetooth SIG Proprietary Page 63 of 78 
+The response shall be indicated when the Set Indoor Bike Simulation Mode Procedure is completed using 
+the Response Code Op Code  and the Request Op Code, along with the appropriate Result Code as 
+defined in Section 4.16.2.22. 
+If the operation results in an error condition where the Fitness Machine Control Point cannot be indicated 
+(e.g., the Client Characteristic Configuration descriptor is not configured for indication or if a procedure is 
+already in progress), see Section 4.16.3 for details on handling this condition. 
+4.16.2.20 Spin Down Control Procedure 
+This procedure requires control permission in order to be executed. Refer to Section 4.16.2.1 for more 
+information on the Request Control procedure. 
+When the Spin Down Control Op Code is written to the Fitness Machine Control Point and the Result 
+Code is ‘Success’, the Server shall use the value sent as a Parameter to initiate the appropriate spin 
+down control. The format of the Control Parameter is UINT8 and the values are described below: 
+Control Parameter Value Definition 
+0x00 Reserved for Future Use 
+0x01 Start 
+0x02 Ignore 
+0x03 – 0xFF Reserved for Future Use 
+Table 4.21: Control Parameter Definition for Spin Down Control Procedure 
+Refer to Appendix 3 for examples related to the Spin Down Procedure. 
+The response shall be indicated when the Spin Down Control Procedure is completed using the 
+Response Code Op Code and the Request Op Code, along with the appropriate Result Code as defined 
+in Section 4.16.2.22. 
+If the operation results in a success condition, the Response Parameter shall include a data structure that 
+includes the Target Speed Low and the Target Speed High fields as defined in Table 4.22. 
+ LSO MSO 
+ Target Speed Low Target Speed High 
+Byte Order LSO...MSO LSO...MSO 
+Data type UINT16 UINT16 
+Size 2 octet 2 octets 
+Units km/h with a resolution of 0.01 km/h km/h with a resolution of 0.01 km/h 
+Table 4.22: Response Parameter when the Spin Down Procedure succeeds 
+If the operation results in an error condition where the Fitness Machine Control Point cannot be indicated 
+(e.g., the Client Characteristic Configuration descriptor is not configured for indication or if a procedure is 
+already in progress), see Section 4.16.3 for details on handling this condition. 
+Refer to Appendix 3 for additional information related to this procedure. 
+
+--- Page 64 ---
+ Fitness Machine Service  /  Service Specification 
+Bluetooth SIG Proprietary Page 64 of 78 
+4.16.2.21 Set Targeted Cadence Procedure 
+This procedure requires control permission in order to be executed. Refer to Section 4.16.2.1 for more 
+information on the Request Control procedure. 
+When the Set Targeted Cadence Op Code is written to the Fitness Machine Control Point and the Result 
+Code is ‘Success’, the Server shall use the value sent as a Parameter as the new targeted cadence. 
+The response shall be indicated when the Set Targeted Distance Procedure is completed using the 
+Response Code Op Code and the Request Op Code, along with the appropriate Result Code as defined 
+in Section 4.16.2.22. 
+If the operation results in an error condition where the Fitness Machine Control Point cannot be indicated 
+(e.g., the Client Characteristic Configuration descriptor is not configured for indication or if a procedure is 
+already in progress), see Section 4.16.3 for details on handling this condition. 
+4.16.2.22 Procedure Complete 
+When any of the procedures described in Sections 4.16.2.2 to 4.16.2.17 have been executed by the 
+Server or if the procedure generated an error as defined below in this section, the Server shall indicate 
+the Fitness Machine Control Point characteristic to the Client. The format of the indication is defined in 
+Table 4.23. 
+ LSO MSO 
+ Response 
+Code Op Code 
+(0x80) 
+Parameter Value 
+Request Op Code 
+ 
+Result Code Response Parameter 
+(if present) 
+Byte Order N/A N/A N/A LSO…MSO 
+Data type UINT8 UINT8 UINT8 See Table 4.24 
+Size 1 octet 1 octet 1 octet 0 to 17 octets 
+Table 4.23: Fitness Machine Control Point characteristic – Parameter Value Format of the Response Indication 
+The Response Code field shall be set to 0x80. 
+The Request Op Code field shall be set to the value of the Op Code representing the requested 
+procedure. 
+Table 4.24 defines the Result Code for the Fitness Machine Control Point. 
+Result Code Definition Request Op Code Response 
+Parameter 
+0x00 Reserved for 
+Future Use 
+N/A N/A 
+0x01 Success All Op Codes defined 
+in Table 4.15 except 
+Spin Down Op Code 
+(0x13). 
+None 
+
+--- Page 65 ---
+ Fitness Machine Service  /  Service Specification 
+Bluetooth SIG Proprietary Page 65 of 78 
+Spin Down Op Code 
+(0x13). 
+See Table 4.22 
+0x02 Op Code not 
+supported 
+All Op Codes defined 
+in Table 4.15 as 
+reserved for future 
+use, or all Op Codes 
+that are not supported 
+by the Server. 
+None 
+0x03 Invalid Parameter All Op Codes defined 
+in Table 4.15. 
+None 
+0x04 Operation Failed All Op Codes defined 
+in Table 4.15. 
+None 
+0x05 Control Not 
+Permitted 
+All Op Codes defined 
+in Table 4.15. 
+None 
+0x06-0xFF Reserved for 
+Future Use 
+N/A N/A 
+Table 4.24: Fitness Machine Control Point characteristic – Result Codes 
+If an Op Code is written to the Fitness Machine Control Point that results in a successful operation, the 
+Server shall indicate the Fitness Machine Control Point with the Response Code Op Code, the Request 
+Op Code, and the Result Code set to “Success”. 
+If an Op Code is written to the Fitness Machine Control Point and the Server does not permit the control 
+to that particular Client, the Server shall respond with the Result Code set to “Control Not Permitted”. 
+Depending on the context of the Server, if an Op Code is written to the Fitness Machine Control Point that 
+contradicts a previously triggered operation (e.g., the Client sets the targeted speed while targeted 
+distance was set or the spin down procedure was ongoing), then previously triggered operation should be 
+aborted and the new procedure should be taken into account by the Server. 
+If the Start or Resume Op Code is written to the Fitness Machine Control Point that results in an error 
+condition (e.g., the fitness machine has already been started), the Server, after sending a Write 
+Response, shall indicate the Fitness Machine Control Point with the Response Code Op Code, the 
+Request Op Code, and the Result Code set to “Operation Failed”. 
+If the Stop or Pause Op Code is written to the Fitness Machine Control Point that results in an error 
+condition (e.g., the fitness machine has already been stopped), the Server, after sending a Write 
+Response, shall indicate the Fitness Machine Control Point with the Response Code Op Code, the 
+Request Op Code, and the Result Code set to “Operation Failed”. 
+If an Op Code is written to the Fitness Machine Control Point characteristic that is unsupported by the 
+Server (e.g., an Op Code that is Reserved for Future Use), the Server, after sending a Write Response, 
+shall indicate the Fitness Machine Control Point with a Response Code Op Code, the Request Op Code, 
+and Result Code set to “Op Code Not Supported”. 
+If a Parameter is written to the Fitness Machine Control Point characteristic that is invalid (e.g., the Client 
+writes the Set Target Speed Op Code with a Parameter that is improperly formatted or that is outside the 
+
+--- Page 66 ---
+ Fitness Machine Service  /  Service Specification 
+Bluetooth SIG Proprietary Page 66 of 78 
+range of the supported values), the Server, after sending a Write Response, shall indicate the Fitness 
+Machine Control Point with a Response Code Op Code, the Request Op Code, and Result Code set to 
+“Invalid Parameter”. 
+If the operation results in an error condition that cannot be reported to the Client using the Fitness 
+Machine Control Point (e.g., the Fitness Machine Control Point cannot be indicated), see Section 4.16.3 
+for details on handling this condition. 
+4.16.3 General Error Handling Procedures 
+Other than error handling procedures that are specific to certain Op Codes, the following apply:  
+If an Op Code is written to the Fitness Machine Control Point characteristic while the Server is performing 
+a previously triggered Fitness Machine Control Point operation (i.e., resulting from invalid Client 
+behavior), the Server shall return an error response with the Attribute Protocol error code set to 
+“Procedure Already In Progress” as defined in CSS Part B, Section 1.2 [3]. See Appendix 2 for an 
+example on how the Server handles this situation. 
+If an Op Code is written to the Fitness Machine Control Point characteristic and the Client Characteristic 
+Configuration descriptor of the Fitness Machine Control Point is not configured for indications, the Server 
+shall return an error response with the Attribute Protocol error code set to “Client Characteristic 
+Configuration Descriptor Improperly Configured” as defined in CSS Part B, Section 1.2 [3]. 
+4.16.4 Procedure Timeout 
+In the context of the Fitness Machine Control Point characteristic, a procedure is started when a write to 
+the Fitness Machine Control Point characteristic is successfully completed (i.e., the Server sends a Write 
+Response). When a procedure is complete, the Server shall indicate the Fitness Machine Control Point 
+with the Op Code set to “Response Code”. 
+In the context of the Fitness Machine Control Point characteristic, a procedure is not considered started 
+and not queued in the Server when a write to the Fitness Machine Control Point results in an error 
+response with an Attribute Protocol error code. 
+4.17 Fitness Machine Status 
+If the Server supports the Fitness Machine Control Point (see Section 4.16), the Fitness Machine Status 
+characteristic shall be exposed by the Server. Otherwise, supporting the Fitness Machine Status 
+characteristic is optional. 
+The Fitness Machine Status characteristic is used to send the status of the Server. Included in the 
+characteristic value is a Fitness Machine Status field, and depending on the value of the Fitness Machine 
+Status Field, a Parameter field may also be included. 
+The structure of the characteristic is defined below: 
+ Op Code Parameter 
+Octet Order N/A LSO...MSO 
+Data type 8bit Variable 
+Size 1 octet Variable 
+
+--- Page 67 ---
+ Fitness Machine Service  /  Service Specification 
+Bluetooth SIG Proprietary Page 67 of 78 
+Units None None 
+Table 4.255: Structure of the Fitness Machine Status characteristic 
+The Fitness Machine Status Op Code and the Parameter format, if required, are defined in Table 4.26. 
+Op Code Definition Parameter 
+0x00 Reserved for Future Use N/A 
+0x01 Reset N/A 
+0x02 Fitness Machine Stopped or Paused by the 
+User 
+Control Information, see Table 4.16. 
+0x03 Fitness Machine Stopped by Safety Key N/A 
+0x04 Fitness Machine Started or Resumed by the 
+User 
+N/A 
+0x05 Target Speed Changed New Target Value (UINT16 in kilometer 
+per hour with a resolution 0.01 km/h) 
+0x06 Target Incline Changed New Target Value (SINT16 in % with a 
+resolution of 0.1 %) 
+0x07 Target Resistance Level Changed New Target Value (UINT8, unitless with 
+a resolution of 0.1) 
+0x08 Target Power Changed New Target Power (SINT16, in Watt 
+with a resolution of 1) 
+0x09 Target Heart Rate Changed New Target Heart Rate (UINT8, in BPM 
+with a resolution of 1) 
+0x0A Targeted Expended Energy Changed New Targeted Expended Energy 
+(UINT16, in Calories with a resolution of 
+1) 
+0x0B Targeted Number of Steps Changed New Targeted Number of Steps Value 
+(UINT16, in Steps with a resolution of 1) 
+0x0C Targeted Number of Strides Changed New Targeted Number of Strides 
+(UINT16, in Stride with a resolution of 1) 
+0x0D Targeted Distance Changed New Targeted Distance (UINT24, in 
+Meters with a resolution of 1) 
+0x0E Targeted Training Time Changed New Targeted Training Time (UINT16, 
+in Seconds with a resolution of 1) 
+
+--- Page 68 ---
+ Fitness Machine Service  /  Service Specification 
+Bluetooth SIG Proprietary Page 68 of 78 
+0x0F Targeted Time in Two Heart Rate Zones 
+Changed 
+New Targeted Time Array, see Section 
+4.16.2.15. 
+0x10 Targeted Time in Three Heart Rate Zones 
+Changed 
+New Targeted Time Array, see Section 
+4.16.2.16. 
+0x11 Targeted Time in Five Heart Rate Zones 
+Changed 
+New Targeted Time Array, see Section 
+4.16.2.17. 
+0x12 Indoor Bike Simulation Parameters Changed New Indoor Bike Simulation 
+Parameters, see Section 4.16.2.18. 
+0x13 Wheel Circumference Changed New Wheel Circumference (UINT16, in 
+Millimeters with resolution of 0.1 
+Millimeter) 
+0x14 Spin Down Status Spin Down Status Value, see Table 
+4.27 
+0x15 Targeted Cadence Changed New Targeted Cadence (UINT16, in 
+1/minute with a resolution of 0.5) 
+0x16 – 
+0xFE 
+Reserved for Future Use N/A 
+0xFF Control Permission Lost N/A 
+Table 4.26: Fitness Machine Status values and Parameter format 
+The Parameter to the Spin Down Op Code is defined in the table below: 
+Spin Down Status Value (UINT8) Definition 
+0x00 Reserved for Future Use 
+0x01 Spin Down Requested 
+0x02 Success 
+0x03 Error 
+0x04 Stop Pedaling 
+0x05 – 0xFF Reserved for Future Use 
+Table 4.27: Spin Down Status value definition 
+4.17.1 Characteristic Behavior 
+When the Fitness Machine Status characteristic is configured for notification via the  Client Characteristic 
+Configuration descriptor, this characteristic shall be notified when new status information is available 
+(e.g., typically within a second after the status change has occurred). 
+If the status is updated by the user (e.g., the user increases the speed via the UI of the Server), the 
+Server shall notify this characteristic to all connected Clients with the appropriate characteristi c value, as 
+defined in Table 4.26. 
+
+--- Page 69 ---
+ Fitness Machine Service  /  Service Specification 
+Bluetooth SIG Proprietary Page 69 of 78 
+If the status is updated by a Client (e.g., a Client increases the speed via the Fitness Machine Control 
+Point procedure defined in Section 4.16.2.3), the Server shall notify this characteristic to the other 
+connected Clients, if any. 
+The Server shall send the Fitness Machine Status notification with the Op Code set to Control Permissio n 
+Lost to the Client that has lost control (e.g., control has been revoked by the user via the UI of the Server 
+or if another connected Client has requested control). 
+The Fitness Machine characteristic contains time-sensitive data; thus the requirements for time-sensitive 
+data and data storage defined in Section 4.18 apply. 
+4.18 Requirements for Time-Sensitive Data 
+The following characteristics contain time-sensitive data: 
+• Treadmill Data 
+• Cross Trainer Data 
+• Step Climber Data 
+• Stair Climber Data 
+• Rower Data 
+• Indoor Bike Data 
+• Training Status 
+• Fitness Machine Status 
+The following requirements apply to these time-sensitive characteristics: 
+• If a link loss occurs while the Server sends a Data Record in multiple notifications, the Data Record 
+shall be discarded and shall not be sent to the Client if the connection is reestablished.  
+• Since this service does not provide any data with a time stamp to identify the measurement time (and 
+age) of the data (the Elapsed Time feature refers to the relative time since the training session has 
+started and not to a time stamp that includes the date-time information), the value of the 
+characteristics (mentioned above) that can be notified shall not be stored in the Server if either the 
+connection is not established or if the notification is not successfully transmitted (e.g., due to link 
+loss). 
+4.19 Transmission of a Data Record 
+For devices that support the low energy feature of Bluetooth, if a Data Record (see Section 4.1) does not 
+exceed the ATT-MTU size and therefore can be sent in one single notification, the More Data bit of the 
+Flags field shall be set to 0 and the associated fields shall be included in the notification.  
+For devices that support the low energy feature of Bluetooth, if a Data Record (see Section 4.1) exceeds 
+the ATT-MTU size, the first notification used to send this Data Record shall have the More Data bit of the 
+Flags field set to 1. The subsequent notifications used to send this Data Record shall also h ave the More 
+Data bit of the Flags field set to 1, except for the last notification, which shall have the More Data bit of the 
+Flags field set to 0. 
+There is no additional requirement for BR/EDR devices due to larger MTU. 
+
+--- Page 70 ---
+ Fitness Machine Service  /  Service Specification 
+Bluetooth SIG Proprietary Page 70 of 78 
+5 SDP Interoperability 
+If this service is exposed over BR/EDR, then it shall have the following SDP record. 
+Item Definition Type Value Status 
+Service Class ID 
+List    M 
+Service Class #0  UUID «Fitness Machine Service» M 
+Protocol Descriptor 
+List    M 
+Protocol #0  UUID L2CAP M 
+Parameter #0 for 
+Protocol #0 PSM Uint16 PSM = ATT M 
+Protocol #1  UUID ATT M 
+Parameter #0 for 
+Protocol #1 
+GATT Start 
+Handle Uint16 First handle of this service in the 
+GATT database M 
+Parameter #1 for 
+Protocol #1 
+GATT End 
+Handle Uint16 Last handle of this service in the 
+GATT database M 
+BrowseGroupList   PublicBrowseRoot* M 
+Table 5.1: SDP Record 
+* PublicBrowseRoot shall be present; however, other browser UUIDs may also be included in the list. 
+
+--- Page 71 ---
+ Fitness Machine Service  /  Service Specification 
+Bluetooth SIG Proprietary Page 71 of 78 
+6 Acronyms and Abbreviations 
+ 
+Abbreviation or Acronym Meaning 
+AMP Alternate MAC PHY 
+ATT Attribute Protocol 
+BR/EDR Basic Rate / Enhanced Data Rate 
+FTMS Fitness Machine Service 
+GAP Generic Access Profile 
+GATT Generic Attribute Profile 
+LE Low Energy 
+RFU Reserved for Future Use 
+SDP Service Discovery Protocol 
+UI User Interface 
+UUID Universally Unique Identifier 
+Table 6.1: Abbreviations and Acronyms 
+
+--- Page 72 ---
+ Fitness Machine Service  /  Service Specification 
+Bluetooth SIG Proprietary Page 72 of 78 
+7 References 
+[1] Bluetooth Core Specification v4.0 or later version of the Core Specification. 
+[2] Characteristic and Descriptor descriptions are accessible via the Bluetooth SIG Assigned Numbers. 
+[3] Supplement to the Bluetooth Core Specification, v5.0 or later. 
+
+--- Page 73 ---
+ Fitness Machine Service  /  Service Specification 
+Bluetooth SIG Proprietary Page 73 of 78 
+Appendix 1 Transmission of a Data Record 
+(INFORMATIVE) 
+App 1.1 Sending Data Record in a Single Notification 
+When a Data Record fits into a single notification, the More Data bit of the Flags field is set to 0, and the 
+related fields are also present. 
+App 1.2 Sending Data Record Split into Multiple Notifications 
+When a Data Record does not fit in a single ATT_MTU payload, it is split into multiple notifications. The 
+content of the notifications is as follows: 
+First notification: 
+- More Data bit of the Flags field is set to 1 
+- Some fields are present 
+- Fields related to the More Data bit are not present 
+Next notifications (if any): 
+- More Data bit of the Flags field is set to 1 
+- Some other fields are present 
+- Fields related to the More Data bit are not present 
+Last notification: 
+- More Data bit of the Flags field is set to 0 
+- Remaining fields are present 
+- Fields related to the More Data bit are present 
+
+--- Page 74 ---
+ Fitness Machine Service  /  Service Specification 
+Bluetooth SIG Proprietary Page 74 of 78 
+Appendix 2 Fitness Machine Control Point 
+Message Sequence Charts (INFORMATIVE) 
+App 2.1 Control Procedure 
+The message sequence chart described below applies to all Fitness Machine Control Point procedures 
+defined in Section 4.16. Note that the Request Control Procedure was executed prior to initiat ing the 
+procedure described below. 
+ 
+ 
+ 
+  
+Client 
+ Server 
+Write Request to Fitness Machine Control Point 
+<Op Code = Set Target Speed> 
+<Parameter Value = 10 km/h 
+ 
+Write Response 
+Handle Value Indication 
+<Op Code = Response Code> 
+<Request Op Code = Set Target Speed > 
+ <Response Value = Success> 
+<Response Parameter = None> 
+Handle Value Confirmation 
+
+--- Page 75 ---
+ Fitness Machine Service  /  Service Specification 
+Bluetooth SIG Proprietary Page 75 of 78 
+App 2.1. Error Handling – Procedure Already In Progress 
+The message sequence chart described below results in a bad behavior of the Client. However, this 
+mechanism is implemented by a Server in order to handle this situation. Note that the Request Control 
+Procedure was executed prior to initiating the procedure described below.  
+ 
+Client 
+ Server 
+Write Request to Fitness Machine Control Point 
+<Op Code = Set Target Speed> 
+<Parameter Value = 10 km/h> 
+ 
+ Write Response 
+Handle Value Indication 
+<Op Code = Response Code> 
+<Request Op Code = Set Target Speed> 
+ <Response Value = Success> 
+<Response Parameter = None> 
+Handle Value Confirmation 
+Write Request to Fitness Machine Control Point 
+<Op Code = Set Target Incline> 
+<Parameter Value = 2 %> 
+ 
+ Error Response 
+Procedure Already In Progress 
+This request is discarded by the Server. 
+
+--- Page 76 ---
+ Fitness Machine Service  /  Service Specification 
+Bluetooth SIG Proprietary Page 76 of 78 
+Appendix 3 Spin Down Procedure Examples 
+(INFORMATIVE) 
+App 3.1 Spin Down Procedure – Requested by the Server 
+The message sequence chart described below applies to the Spin Down Control procedures defined in 
+Section 4.16.2.20. Note that the Request Control Procedure was executed prior to initiating the procedure 
+described below. 
+ 
+Client 
+ Server 
+Write Request to Fitness Machine Control Point 
+<Op Code = Spin-Down Control> 
+<Parameter Value = START> 
+ 
+Handle Value Indication 
+<Op Code = Response Code> 
+<Request Op Code = Spin-Down Control> 
+ <Response Value = Success> 
+<Response Parameters = Target Speed High 
+                                               Target Speed Low> 
+Handle Value Confirmation 
+Standard Indoor Bike Data 
+including speed 
+FTM Status 
+<Op Code = Spin-Down Requested> 
+<Parameter Value = N/A> 
+  
+FTM Status 
+<Op Code = Spin-Down Success> 
+<Parameter Value = Spin-Down Time in 
+ms> 
+Implementation of this message is optional for the 
+Server. 
+The Client may send this Control Procedure 
+anytime, without the FTM status being sent. 
+ 
+Write Response 
+The Client can display the current speed versus 
+the target speeds to prompt the user to speed up 
+or slow down.  
+The Client should not prompt the user to stop 
+pedaling if the target is reached. 
+FTM Status 
+<Op Code = Spin-Down Stop 
+Pedaling> 
+<Parameter Value = None> 
+The Client should now prompt the user to stop 
+pedaling. 
+The server is now in normal operating state.  
+The Client may display the Spin Down time to the 
+user. 
+
+--- Page 77 ---
+ Fitness Machine Service  /  Service Specification 
+Bluetooth SIG Proprietary Page 77 of 78 
+App 3.2 Spin Down Procedure – Initiated by the Client with Error 
+The message sequence chart described below applies to the Spin Down Control procedures defined in 
+Section 4.16.2.20. Note that the Request Control Procedure was executed prior to initiating the procedure 
+described below. 
+ 
+  
+Client 
+ Server 
+Write Request to Fitness Machine Control Point 
+<Op Code = Spin-Down Control> 
+<Parameter Value = START> 
+ 
+Handle Value Indication 
+<Op Code = Response Code> 
+<Request Op Code = Spin-Down Control> 
+ <Response Value = Success> 
+<Response Parameters = Target Speed High 
+                                               Target Speed Low> 
+Handle Value Confirmation 
+Standard Indoor Bike Data 
+Including speed 
+FTM Status 
+<Op Code = Spin-Down Fail> 
+<Parameter Value = None> 
+Write Response 
+This message can be sent by the Server at any 
+time after the Control Point Procedure is complete, 
+including before any Indoor Bike Data notifications 
+or after Stop Pedaling Status are sent. 
+The Server should now be considered to be in 
+normal operating state. 
+The Client may write the control point to start 
+again. 
+
+--- Page 78 ---
+ Fitness Machine Service  /  Service Specification 
+Bluetooth SIG Proprietary Page 78 of 78 
+App 3.3 Spin Down Procedure – Ignored by the Client 
+The message sequence chart described below applies to the Spin Down Control procedures defined in 
+Section 4.16.2.20. Note that the Request Control Procedure was executed prior to initiating the procedure 
+described below. 
+ 
+ 
+Client 
+ Server 
+Write Request to Fitness Machine Control Point 
+<Op Code = Spin-Down Control> 
+<Parameter Value = IGNORE> 
+ 
+Handle Value Indication 
+<Op Code = Response Code> 
+<Request Op Code = Spin-Down Control> 
+ <Response Value = Success> 
+<Response Parameters = None> 
+Handle Value Confirmation 
+FTM Status 
+<Op Code = Spin-Down Requested> 
+<Parameter Value = N/A> 
+  
+Implementation of this message is optional for the 
+Server. 
+If IGNORE is sent, this sequence stops here. The 
+Server may send another FTM Status message to 
+start again. 
+ 
+ 
+Write Response 
+
