@@ -2,15 +2,23 @@
 
 **Project:** Treadmill Connect (iFit to FTMS Bridge)  
 **Time Spent:** Approximately 3 Days (20-25 Hours of active development)  
-**Team:** Sushil (User) & Antigravity (Google Deepmind AI Agent)
+**Team:** Github User & Antigravity (Google Deepmind AI Agent)
 
 ## 🏗️ How It Was Built
 
 This project is the result of a "pair programming" collaboration between a human developer and an AI agent. The goal was to reverse-engineer a proprietary, closed-source Bluetooth protocol and re-implement it as an open standard.
 
+### ⚠️ Previous Attempts (The "Claude" Phase)
+
+Before this successful iteration, we spent approximately 2-3 days attempting to solve this problem using **Claude 3.5 Sonnet (Thinking)** as the primary AI agent.
+*   **Outcome**: Failure.
+*   **Issues**: The agent struggled significantly with the binary pattern recognition required for the custom checksums and often hallucinated standard Bluetooth protocols (like FTMS) where none existed. It could not isolate the specific handshake sequence required to "unlock" the proprietary motor controller.
+*   **Pivot**: We started completely from scratch with **Gemini 3.0 Pro** (via Antigravity), effectively discarding the previous codebase and analysis.
+
 ### 🛠️ Tools Used
 
-1.  **AI Agent**: **Antigravity** (Powered by Google's **Gemini 2.0** models).
+
+1.  **AI Agent**: **Antigravity** (Powered by Google's **Gemini 3.0 Pro** models).
     *   *Role*: Protocol analysis, hex dump parsing, code generation, debugging strategy.
 2.  **IDE**: **VS Code**.
 3.  **Packet Analysis**:
@@ -25,7 +33,8 @@ This project is the result of a "pair programming" collaboration between a human
 
 ### 🤖 Models & AI Contribution
 
-The project relied heavily on **Google's Gemini 2.0** models (accessed via the Antigravity agent) for:
+The project relied heavily on **Google's Gemini 3.0 Pro** models (accessed via the Antigravity agent) for:
+
 *   **Pattern Recognition**: Identifying repeating header sequences (`FE 02 ...`) in thousands of lines of hex dumps.
 *   **Anomaly Detection**: Spotting the single "Enable" command (`0x90`) hidden among hundreds of telemetry packets that turned out to be the key to unlocking the motor.
 *   **Code Translation**: Converting raw hex logic into structured Python (`struct.pack`) and C++ (for ESP32).
