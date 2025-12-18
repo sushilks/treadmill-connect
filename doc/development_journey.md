@@ -52,10 +52,17 @@ The project relied heavily on **Google's Gemini 3.0 Pro** models (accessed via t
 *   **Result**: We found the "Magic Packet" (Command `0x90`) that authenticates the session. Once sent, the treadmill's light turned **Blue**.
 
 ### Day 3: Refinement & FTMS Implementation
-*   **Scaling**: We discovered the treadmill used unusual scaling factors:
+*   **Scaling Discoveries**: We discovered the treadmill used unusual scaling factors:
     *   **Speed**: `Value / 100` (e.g., 400 = 4.0 kph).
     *   **Incline (Write)**: `Value / 60` (e.g., 60 = 1.0%).
     *   **Incline (Read)**: `Value / 100` (Inconsistent inputs vs outputs!).
+    *   **Distance**: Offset 42 (not 16!). `Value / 100` = Meters.
+    *   **Time**: Offset 27. `Value` = Seconds (not Milliseconds as initially thought).
+    *   **Calories**: Offset 31. `Value / 97656.0` (Weird factor, but matches!).
+*   **FTMS Compliance**:
+    *   The BLE standard requires fields to be packed in **ascending bit-index order**.
+    *   We initially swapped **Expended Energy (Bit 7)** and **Elapsed Time (Bit 10)**.
+    *   This caused apps like Runna to read "Time" bytes as "Energy", displaying "1 Calorie" for "1 Second". Reordering fixed this.
 *   **Bridge Construction**: Built the `main.py` application using `bleak` (to talk to the Treadmill) and `bless` (to talk to Zwift/Runna).
 *   **ESP32 Port**: Ported the verified Python logic to C++ for a standalone dongle solution.
 

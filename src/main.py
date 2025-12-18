@@ -3,7 +3,29 @@ import asyncio
 import logging
 import sys
 import struct
+import time
+
+# --- MONKEY PATCH FOR BLESS <-> BLEAK 0.22.x COMPATIBILITY ---
+# Bless 0.2.6 relies on 'bleak.backends.corebluetooth.service' which was removed.
+# We map it to the new location 'bleak.backends.service' or create a dummy.
+try:
+    import bleak.backends.corebluetooth.service
+except ImportError:
+    # Attempt to patch
+    try:
+        import bleak.backends.service
+        # Create a dummy module for 'bleak.backends.corebluetooth.service'
+        # pointing to 'bleak.backends.service' (where BleakGATTService likely resides now)
+        # OR just mock it enough for Bless to import.
+        # Actually, for CoreBluetooth, Bless expects BleakGATTServiceCoreBluetooth.
+        # Let's hope mapping the module works.
+        sys.modules["bleak.backends.corebluetooth.service"] = bleak.backends.service
+    except Exception as e:
+        print(f"Warning: Failed to patch bless/bleak: {e}")
+# -------------------------------------------------------------
+
 from typing import Any, Dict
+from uuid import UUID
 
 from bless import (
     BlessServer,
@@ -16,6 +38,12 @@ from bleak import BleakClient, BleakScanner
 # =============================================================================
 # LOGGING
 # =============================================================================
+# Configure Logging
+logging.basicConfig(level=logging.INFO,
+                    format='%(asctime)s - %(message)s',
+                    datefmt='%H:%M:%S')
+logger = logging.getLogger(__name__)
+
 # =============================================================================
 # CONSOLE UI & LOGGING
 # =============================================================================
@@ -114,10 +142,10 @@ FTMS_INCLINE_RANGE_UUID = "00002AD5-0000-1000-8000-00805F9B34FB"
 SERVER_NAME = "mytm"
 
 # Feature Mask: 
-# Byte 0: Bits 0-7. 0x0C = (Bit 2: Total Dist, Bit 3: Inclination)
-# Byte 1: Bits 8-15. 0x02 = (Bit 9: Expended Energy)
+# Byte 0: Bits 0-7. 0x22 = (Bit 1: Total Dist, Bit 5: Inclination)
+# Byte 1: Bits 8-15. 0x01 = (Bit 8: Expended Energy)
 # Byte 4: Bits 0-7 (Target). 0x03 = (Bit 0: Speed Target, Bit 1: Inc Target)
-FTMS_FEATURE_VAL = b'\x0C\x02\x00\x00\x03\x00\x00\x00'
+FTMS_FEATURE_VAL = b'\x22\x01\x00\x00\x03\x00\x00\x00'
 
 # =============================================================================
 # SHARED STATE
@@ -131,6 +159,7 @@ class BridgeState:
         self.elapsed_time = 0 
         self.calories = 0
         self.control_queue = asyncio.Queue()
+        self.last_notify_time = time.time()
         self.response_queue = asyncio.Queue()
         self.last_ftms_payload = None
         self.last_update_ts = 0
@@ -237,39 +266,51 @@ async def ifit_client_loop(server: BlessServer):
     reassembler = PacketReassembler()
     
     def decode_telemetry(sender, data):
-        for payload in reassembler.process_chunk(data):
-            if len(payload) < 30 or payload[3] != 0x2F: continue
-            
-            # Divide by 100 for units
-            s_raw = struct.unpack_from('<H', payload, 8)[0]
-            i_raw = struct.unpack_from('<H', payload, 10)[0]
-            
-            # Store in state
-            state.speed_kph = s_raw / 100.0
-            state.incline_pct = i_raw / 100.0
-            
-            # Distance (Cumulative Meters)
-            if len(payload) >= 46:
-                d_raw = struct.unpack_from('<I', payload, 42)[0]
-                state.distance_m = int(d_raw / 100.0) 
+        try:
+             # Feed Watchdog
+             state.last_notify_time = time.time()
+             
+             for payload in reassembler.process_chunk(data):
+                if len(payload) < 30 or payload[3] != 0x2F: continue
                 
-            # Time (Seconds)
-            if len(payload) >= 31:
-                t_raw = struct.unpack_from('<I', payload, 27)[0]
-                # iFit seems to send Milliseconds (e.g. 1235000 for 20m35s)
-                state.elapsed_time = int(t_raw / 1000)
+                # Divide by 100 for units
+                s_raw = struct.unpack_from('<H', payload, 8)[0]
+                i_raw = struct.unpack_from('<H', payload, 10)[0]
                 
-            # Calories
-            if len(payload) >= 35:
-                cal_raw = struct.unpack_from('<I', payload, 31)[0]
-                # Formula from ifit-ctrl.py: Raw / 97656.0
-                state.calories = int(cal_raw / 97656.0) 
-            
-            # Notify FTMS (Fire and Forget)
-            asyncio.create_task(update_ftms(server))
-            
-            # Update Console UI
-            ui.update_status(state)
+                # Update State
+                state.speed_kph = s_raw / 100.0
+                state.incline_pct = i_raw / 100.0
+                
+                # Distance (Cumulative Meters) - Source: ifit-ctrl.py (verified working)
+                # Offset 42, Unit: 0.01 Meters? (d / 100 = meters)
+                if len(payload) >= 46:
+                    d_raw = struct.unpack_from('<I', payload, 42)[0]
+                    state.distance_m = d_raw / 100.0
+                    
+                    # Log for verification
+                    if DEBUG_MODE: logger.info(f"Dist Update: {state.distance_m}m (Raw: {d_raw})")
+                else:
+                    # Fallback or just ignore
+                    pass
+                
+                # Time (Offset 27)
+                if len(payload) >= 31:
+                     t_raw = struct.unpack_from('<I', payload, 27)[0]
+                     state.elapsed_time = t_raw # Seconds (was incorrectly /1000)
+                    
+                # Calories
+                if len(payload) >= 35:
+                     cal_raw = struct.unpack_from('<I', payload, 31)[0]
+                     # Formula from ifit-ctrl.py: Raw / 97656.0
+                     state.calories = int(cal_raw / 97656.0) 
+                
+                # Notify FTMS (Fire and Forget)
+                asyncio.create_task(update_ftms(server))
+                
+                # Update Console UI
+                ui.update_status(state)
+        except Exception as e:
+             logger.error(f"Decode Error: {e}")
 
     logger.info("Starting iFit Client Loop...")
     while True:
@@ -300,30 +341,58 @@ async def ifit_client_loop(server: BlessServer):
                     await client.start_notify(UUID_RX, decode_telemetry)
                     await robust_handshake(client, write_char)
                     logger.info("Handshake Complete. Loop Active.")
-                    
+                    # 4. Watchdog: Reconnect if no telemetry for 5 seconds
+                    if time.time() - state.last_notify_time > 5.0:
+                         logger.warning("Watchdog: No data from Treadmill for 5s. Reconnecting...")
+                         break
+
+                    # Loop Control
                     while client.is_connected:
-                        # 1. Process Queue
-                        while not state.control_queue.empty():
+                        current_time = time.time()
+                        
+                        # 1. Process Queue (Limit to 5 consecutive commands to ensure we poll)
+                        command_count = 0
+                        command_sent = False
+                        
+                        while not state.control_queue.empty() and command_count < 5:
                             cmd_type, val = await state.control_queue.get()
                             pkt = create_control_command(cmd_type, val)
                             if pkt:
                                 logger.debug(f"Sending Command: Type={cmd_type} Val={val}")
-                                await send_chunked_robust(client, pkt, write_char)
-                            
-                        # 2. Poll (Fast Keepalive needed for iFit Watchdog)
-                        try:
-                            await send_chunked_robust(client, POLL_CMD, write_char)
-                        except Exception as e:
-                            logger.error(f"Write Error: {e}")
-                            break
-                            
-                        await asyncio.sleep(0.1) # Aggressive poll for stability
+                                try:
+                                    await send_chunked_robust(client, pkt, write_char)
+                                    command_sent = True
+                                    command_count += 1
+                                    await asyncio.sleep(0.1)
+                                except Exception as e:
+                                    logger.error(f"Command Send Error: {e}")
+                                    break # Break inner to hit outer break
+                        
+                        # Check loop break
+                        if not client.is_connected: break
+
+                        # 2. Poll (If Idle OR forced every 1.0s)
+                        # If we spent time sending commands, we still need to poll periodically?
+                        # Actually standard poll is fine if we limit command burst.
+                        if not command_sent or (current_time - state.last_notify_time > 1.0):
+                             try:
+                                await send_chunked_robust(client, POLL_CMD, write_char)
+                             except Exception as e:
+                                logger.error(f"Poll Write Error: {e}")
+                                break
+                        
+                        # 3. Watchdog Check
+                        if time.time() - state.last_notify_time > 5.0:
+                             logger.warning("Watchdog: Telemetry Stalled > 5s. Reconnecting...")
+                             break
+                             
+                        await asyncio.sleep(0.2) # 5Hz Update Rate
                         
                     state.connected_to_ifit = False
-                    logger.info("Client Disconnected")
+                    logger.info("Client Disconnected (Loop Ended)")
             else:
                 logger.debug("iFit Device not found, retrying...")
-                await asyncio.sleep(5.0) # Standard retry
+                await asyncio.sleep(2.0) # Faster retry
                 
         except Exception as e:
             logger.error(f"iFit Client Error: {e}")
@@ -372,13 +441,8 @@ async def update_ftms(server: BlessServer):
     # Send 0 instead of 0x7FFF for cleaner UI
     payload.extend(struct.pack('<h', 0))
     
-    # Flags Bit 10: Elapsed Time (2 bytes, seconds)
-    if (flags & 0x0400):
-        # Limit to 65535 (uint16 max)
-        t_val = min(state.elapsed_time, 65535)
-        payload.extend(struct.pack('<H', t_val))
-        
     # Flags Bit 7: Expended Energy (Total(2), PerHour(2), PerMin(1))
+    # MUST be before Elapsed Time (Bit 10)
     if (flags & 0x0080):
          # Total (Calories)
          c_val = min(state.calories, 65535)
@@ -387,6 +451,12 @@ async def update_ftms(server: BlessServer):
          payload.extend(struct.pack('<H', 0xFFFF))
          # Per Min (Not Available)
          payload.extend(struct.pack('<B', 0xFF))
+
+    # Flags Bit 10: Elapsed Time (2 bytes, seconds)
+    if (flags & 0x0400):
+        # Limit to 65535 (uint16 max)
+        t_val = min(state.elapsed_time, 65535)
+        payload.extend(struct.pack('<H', t_val))
     
     # Smart Update: Only notify if changed OR > 5 seconds passed
     import time
@@ -747,7 +817,7 @@ async def mock_client_loop(server: BlessServer):
     
     # Simulate Telemetry
     while True:
-        # Update dummy values
+        # Update# Dummy replace to check file state is safer? No, just view.s
         state.speed_kph = 5.0 # 5 kph
         state.incline_pct = 1.0 # 1%
         state.distance_m += 1

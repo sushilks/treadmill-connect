@@ -7,6 +7,12 @@ Treadmill Connect is a simple program that lets you use your iFit-locked treadmi
 ## ⚠️ Disclaimer
 
 This project is open-source and provided "as-is" without any warranty or official support. Use at your own risk.
+ 
+## 🚧 Current Status
+> [!NOTE]
+> **Use the Python Program (Laptop) for best results.**
+> *   ✅ **Python CLI (Laptop)**: Tested and Reliable with **Runna**. Recommended for daily use.
+> *   ⚠️ **ESP32 Firmware**: **Work In Progress (Experimental)**. Currently experiencing connectivity issues ("Incompatible Device" errors) with some apps like Runna. We are actively debugging protocol timing issues. Use at your own risk.
 
 ## 🤔 How does it work?
 Normally, iFit treadmills speak a "secret language" that only the iFit app understands. This program acts as a translator (a **Bridge**):
@@ -77,7 +83,10 @@ These options are for running the bridge on your computer (Mac/Linux/Windows).
     ```
 
 ## ⚡ ESP32 Firmware (Standalone Bridge)
-You can run this bridge on a standalone ESP32 microcontroller, removing the need for a laptop!
+You can run this bridge on a standalone ESP32 microcontroller, removing the need for a laptop! Simply plug it in close to your treadmill, and it will work wirelessly.
+
+### Prerequisites
+-   **PlatformIO**: Install the VS Code extension or CLI (`pip install platformio`).
 
 ### Prerequisites
 -   **PlatformIO**: Install the VS Code extension or CLI (`pip install platformio`).

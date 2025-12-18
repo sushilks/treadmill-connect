@@ -3,19 +3,30 @@
 // Connection Callbacks
 class ServerCallbacks : public NimBLEServerCallbacks {
   void onConnect(NimBLEServer *pServer) override {
-    bridgeState.server_advertising = false;
+    Serial.println("Client Connected");
     bridgeState.connected_to_ftms = true;
-    Serial.println("FTMS Client Connected");
-  };
+
+    // Request stable connection parameters
+    if (pServer->getConnectedCount() > 0) {
+      // Use the original working method for NimBLE 1.x
+      NimBLEConnInfo peer = pServer->getPeerInfo(0);
+      pServer->updateConnParams(peer.getConnHandle(), 12, 24, 0, 400);
+    }
+  }
+
   void onDisconnect(NimBLEServer *pServer) override {
-    bridgeState.server_advertising = true;
+    Serial.println("Client Disconnected");
     bridgeState.connected_to_ftms = false;
-    Serial.println("FTMS Client Disconnected");
     NimBLEDevice::startAdvertising();
   }
 };
 
 class ControlCallbacks : public NimBLECharacteristicCallbacks {
+  NimBLECharacteristic *pStatusChar = nullptr;
+
+public:
+  void setStatusChar(NimBLECharacteristic *status) { pStatusChar = status; }
+
   void onWrite(NimBLECharacteristic *pCharacteristic) override {
     std::string value = pCharacteristic->getValue();
     if (value.length() < 1)
@@ -25,6 +36,17 @@ class ControlCallbacks : public NimBLECharacteristicCallbacks {
 
     // 0x00: Request Control
     if (opcode == 0x00) {
+      Serial.println("FTMS: Request Control Received");
+
+      // ORDER: Notify Status (Started) FIRST, then Indicate Response (Success)
+      // Matches Python behavior.
+      if (pStatusChar) {
+        uint8_t stat[] = {0x04}; // Started
+        pStatusChar->setValue(stat, 1);
+        pStatusChar->notify();
+        Serial.println("FTMS Status: Started (0x04)");
+      }
+
       // Indicate Success (0x80, Opcode, Result(1=Success))
       uint8_t resp[] = {0x80, 0x00, 0x01};
       pCharacteristic->setValue(resp, 3);
@@ -41,7 +63,17 @@ class ControlCallbacks : public NimBLECharacteristicCallbacks {
       bridgeState.pending_control = true;
       Serial.printf("FTMS Set Speed: %d (0.01 KPH)\n", kph_raw);
 
-      // Response
+      // Notify Status Change FIRST
+      if (pStatusChar) {
+        uint8_t stat[3];
+        stat[0] = 0x05; // Speed Changed
+        stat[1] = value[1];
+        stat[2] = value[2];
+        pStatusChar->setValue(stat, 3);
+        pStatusChar->notify();
+      }
+
+      // Indicate Success
       uint8_t resp[] = {0x80, 0x02, 0x01};
       pCharacteristic->setValue(resp, 3);
       pCharacteristic->indicate();
@@ -55,8 +87,20 @@ class ControlCallbacks : public NimBLECharacteristicCallbacks {
       bridgeState.pending_control_type = 2; // Incline
       bridgeState.pending_control_value = ifit_inc;
       bridgeState.pending_control = true;
+      Serial.printf("FTMS Set Incline: %d (0.1%%) -> iFit Val: %d\n", inc_raw,
+                    ifit_inc);
 
-      // Response
+      // Notify Status Change FIRST
+      if (pStatusChar) {
+        uint8_t stat[3];
+        stat[0] = 0x06; // Incline Changed
+        stat[1] = value[1];
+        stat[2] = value[2];
+        pStatusChar->setValue(stat, 3);
+        pStatusChar->notify();
+      }
+
+      // Indicate Success
       uint8_t resp[] = {0x80, 0x03, 0x01};
       pCharacteristic->setValue(resp, 3);
       pCharacteristic->indicate();
@@ -71,35 +115,59 @@ void FTMSServer::init() {
   // Service
   NimBLEService *pService = pServer->createService(UUID_FTMS_SERVICE);
 
-  // Data Char (Notify)
+  // 1. Data Char (Notify)
   pDataChar =
       pService->createCharacteristic(UUID_FTMS_DATA, NIMBLE_PROPERTY::NOTIFY);
 
-  // Control Point
+  // 2. Control Point (Write/Indicate)
   pControlChar = pService->createCharacteristic(UUID_FTMS_CONTROL_POINT,
                                                 NIMBLE_PROPERTY::WRITE |
                                                     NIMBLE_PROPERTY::INDICATE);
-  pControlChar->setCallbacks(new ControlCallbacks());
+  ControlCallbacks *controlCB = new ControlCallbacks();
+  pControlChar->setCallbacks(controlCB);
 
-  // Feature
+  // 3. Feature (Read)
   NimBLECharacteristic *pFeature =
       pService->createCharacteristic(UUID_FTMS_FEATURE, NIMBLE_PROPERTY::READ);
-  // Byte 0: 0x0C (Dist, Inc)
-  // Byte 1: 0x20 (Expended Energy). Matches Packet Flag Bit 7.
-  // Byte 4: 0x03 (Target Speed, Target Inc).
-  uint8_t feat[] = {0x0C, 0x20, 0x00, 0x00, 0x03, 0x00, 0x00, 0x00};
+
+  // Byte 0:
+  // Bit 1: Total Distance (0x02)
+  // Bit 5: Inclination (0x20)
+  // Value: 0x22
+
+  // Byte 1:
+  // Bit 0 (Overall Bit 8): Expended Energy (0x01)
+
+  // Byte 4:
+  // Bit 0: Speed Target (0x01)
+  // Bit 1: Incline Target (0x02)
+  // Value: 0x03
+
+  uint8_t feat[] = {0x22, 0x01, 0x00, 0x00, 0x03, 0x00, 0x00, 0x00};
   pFeature->setValue(feat, 8);
 
-  // Status
+  // 4. Status (Notify)
   pStatusChar =
       pService->createCharacteristic(UUID_FTMS_STATUS, NIMBLE_PROPERTY::NOTIFY);
 
-  // Supported Speed Range (Mandatory for Control)
-  // 0.01 KPH resolution. Min: 0.5 KPH, Max: 22.0 KPH, Step: 0.1 KPH
+  // Link Status to Control Callbacks
+  controlCB->setStatusChar(pStatusChar);
+
+  // 5. Training Status (Required by some apps)
+  // 2AD3: 00 01 (Idle)
+  NimBLECharacteristic *pTrainingStatus = pService->createCharacteristic(
+      UUID_FTMS_TRAINING_STATUS,
+      NIMBLE_PROPERTY::READ | NIMBLE_PROPERTY::NOTIFY);
+  uint8_t t_stat[] = {0x00, 0x01}; // Flags=0, Status=1(Idle)
+  pTrainingStatus->setValue(t_stat, 2);
+
+  // 6. Supported Speed Range (Mandatory for Control)
+  // 0.01 KPH resolution. Min: 1.0 KPH (100), Max: 20.0 KPH (2000), Step: 0.1
+  // KPH (10)
   NimBLECharacteristic *pSpeedRange = pService->createCharacteristic(
       UUID_FTMS_SPEED_RANGE, NIMBLE_PROPERTY::READ);
-  uint16_t min_spd = 50;   // 0.5 KPH
-  uint16_t max_spd = 2200; // 22.0 KPH
+  uint16_t min_spd = 100;  // 1.0 KPH
+  uint16_t max_spd = 2000; // 20.0 KPH
   uint16_t inc_spd = 10;   // 0.1 KPH
   uint8_t speed_range_val[] = {
       (uint8_t)(min_spd & 0xFF), (uint8_t)(min_spd >> 8),
@@ -107,13 +175,13 @@ void FTMSServer::init() {
       (uint8_t)(inc_spd & 0xFF), (uint8_t)(inc_spd >> 8)};
   pSpeedRange->setValue(speed_range_val, 6);
 
-  // Supported Inclination Range (Mandatory for Control)
-  // 0.1% resolution. Min: 0%, Max: 15%, Step: 0.5%
+  // 7. Supported Inclination Range (Mandatory for Control)
+  // 0.1% resolution. Min: -6.0% (-60), Max: 15.0% (150), Step: 1.0% (10)
   NimBLECharacteristic *pIncRange = pService->createCharacteristic(
       UUID_FTMS_INCLINE_RANGE, NIMBLE_PROPERTY::READ);
-  int16_t min_inc = 0;   // 0%
-  int16_t max_inc = 150; // 15%
-  uint16_t inc_inc = 5;  // 0.5%
+  int16_t min_inc = -60; // -6.0%
+  int16_t max_inc = 150; // 15.0%
+  uint16_t inc_inc = 10; // 1.0%
   uint8_t inc_range_val[] = {
       (uint8_t)(min_inc & 0xFF), (uint8_t)(min_inc >> 8),
       (uint8_t)(max_inc & 0xFF), (uint8_t)(max_inc >> 8),
@@ -122,9 +190,34 @@ void FTMSServer::init() {
 
   pService->start();
 
+  // ----------------------------------------------------------------
+  // Device Information Service (DIS) - Essential for App Compatibility
+  // ----------------------------------------------------------------
+  NimBLEService *pDisService = pServer->createService("180A");
+
+  // Manufacturer Name
+  pDisService->createCharacteristic("2A29", NIMBLE_PROPERTY::READ)
+      ->setValue("iFit Bridge");
+
+  // Model Number
+  pDisService->createCharacteristic("2A24", NIMBLE_PROPERTY::READ)
+      ->setValue("Loma-1");
+
+  // Firmware Revision
+  pDisService->createCharacteristic("2A26", NIMBLE_PROPERTY::READ)
+      ->setValue("1.0.0");
+
+  // Serial Number (2A25)
+  pDisService->createCharacteristic("2A25", NIMBLE_PROPERTY::READ)
+      ->setValue("123456789");
+
+  pDisService->start();
+
   // Advertisement
   NimBLEAdvertising *pAdvertising = NimBLEDevice::getAdvertising();
   pAdvertising->addServiceUUID(UUID_FTMS_SERVICE);
+  pAdvertising->setAppearance(1344); // 0x0540 = Generic Treadmill
+  pAdvertising->addTxPower();
   pAdvertising->setScanResponse(true);
   pAdvertising->start();
   bridgeState.server_advertising = true;
@@ -140,7 +233,7 @@ void FTMSServer::update() {
     return;
   }
 
-  if (millis() - bridgeState.last_ftms_update > 1000) {
+  if (millis() - bridgeState.last_ftms_update > 200) { // 5Hz (Matches Python)
     bridgeState.last_ftms_update = millis();
 
     // Treadmill Data Packet (Little Endian)
@@ -198,9 +291,9 @@ void FTMSServer::update() {
     packet[idx++] = total_cals & 0xFF;
     packet[idx++] = (total_cals >> 8) & 0xFF;
 
-    packet[idx++] = 0x00; // Cals/Hr L
-    packet[idx++] = 0x00; // Cals/Hr H
-    packet[idx++] = 0x00; // Energy/Min
+    packet[idx++] = 0xFF; // Cals/Hr L (Not Available)
+    packet[idx++] = 0xFF; // Cals/Hr H (Not Available)
+    packet[idx++] = 0xFF; // Energy/Min (Not Available)
 
     // Elapsed Time (Seconds) (2 bytes)
     uint16_t time_s = (uint16_t)bridgeState.elapsed_time_s;

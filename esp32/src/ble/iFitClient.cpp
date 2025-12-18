@@ -97,7 +97,7 @@ void iFitClient::loop() {
   } else {
     // Connected Logic
     if (pClient && !pClient->isConnected()) {
-      Serial.println("Disconnected from Treadmill.");
+      Serial.println("Disconnected from Treadmill (Physical Device).");
       bridgeState.connected_to_ifit = false;
       pDevice = nullptr;
       NimBLEDevice::deleteClient(pClient);
@@ -106,17 +106,22 @@ void iFitClient::loop() {
     }
 
     // Polling Loop
-    if (millis() - last_poll_ms > 250) { // Poll every 250ms
-      last_poll_ms = millis();
+    // Polling Loop (Keep-Alive)
+    // Python only polls if no telemetry for 1.0s.
+    // We check last_rx_ms.
+    // Also check pending control - always send control immediately.
 
-      // Check for Pending Control Commands
-      if (bridgeState.pending_control) {
-        sendControlCommand(bridgeState.pending_control_type,
-                           (uint16_t)bridgeState.pending_control_value);
-        bridgeState.pending_control = false;
-      }
-      // Otherwise Poll
-      else if (pTxChar) {
+    if (bridgeState.pending_control) {
+      sendControlCommand(bridgeState.pending_control_type,
+                         (uint16_t)bridgeState.pending_control_value);
+      bridgeState.pending_control = false;
+      // Don't poll immediately after control
+      last_poll_ms = millis();
+    }
+    // Only poll if connected and silence > 1000ms
+    else if (pTxChar && (millis() - last_rx_ms > 1000)) {
+      if (millis() - last_poll_ms > 1000) { // Limit poll rate to 1Hz if silence
+        last_poll_ms = millis();
         sendChunked(CMD_POLL, sizeof(CMD_POLL));
       }
     }
@@ -206,12 +211,20 @@ void iFitClient::performHandshake() {
                    sizeof(CMD_4), sizeof(CMD_5), sizeof(CMD_6),
                    sizeof(CMD_7), sizeof(CMD_8), sizeof(CMD_9)};
 
+  // Extra Commands from Python (HS_STEPS 10-12)
+  const uint8_t CMD_10[] = {0x00, 0x00, 0x00, 0x10, 0x01, 0x00, 0x3A};
+  const uint8_t
+      CMD_11[] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}; // 23 bytes of 0s
+  const uint8_t CMD_12[] = {0x00, 0x00, 0x80, 0x00, 0x00, 0xA5};
+
   for (int i = 0; i < 9; i++) {
     sendChunked(cmds[i], lens[i]);
     if (i == 6 || i == 7)
       delay(500); // 7 and 8 need more time
     else if (i == 8)
-      delay(1000); // Final enable needs most time
+      delay(2000); // Step 9 (CMD_8/9) delay
     else
       delay(100);
   }
@@ -233,8 +246,10 @@ void iFitClient::sendChunked(const uint8_t *data, size_t length) {
   buffer[3] = (uint8_t)total_chunks;
   memset(buffer + 4, 0, 16);
 
-  pTxChar->writeValue(buffer, 20, false);
-  delay(50); // Small delay between chunks
+  // Use Write With Response (true) to ensure delivery
+  // Increase delay to 100ms to match Python's 0.1s
+  pTxChar->writeValue(buffer, 20, true);
+  delay(100);
 
   for (size_t i = 0; i < chunk_count; i++) {
     size_t offset = i * 18;
@@ -247,8 +262,8 @@ void iFitClient::sendChunked(const uint8_t *data, size_t length) {
     buffer[1] = (uint8_t)this_len;
     memcpy(buffer + 2, data + offset, this_len);
 
-    pTxChar->writeValue(buffer, 2 + this_len, false);
-    delay(50);
+    pTxChar->writeValue(buffer, 2 + this_len, true);
+    delay(100);
   }
 }
 
@@ -261,6 +276,17 @@ void iFitClient::onResult(NimBLERemoteCharacteristic *pBLERemoteCharacteristic,
   // a context, but NimBLE C++ callback signature is fixed. Workaround: Access
   // the global 'ifitClient' object.
   extern iFitClient ifitClient;
+
+  // Track last RX time for silence-based polling
+  ifitClient.last_rx_ms = millis();
+
+  // DEBUG: Hex Dump every RX packet (Keep for now to verify fix)
+  Serial.printf("RX (Len=%d): ", length);
+  for (size_t i = 0; i < length; i++) {
+    Serial.printf("%02X ", pData[i]);
+  }
+  Serial.println();
+
   ifitClient.processTelemetry(pData, length);
 }
 
@@ -333,8 +359,28 @@ void iFitClient::processTelemetry(uint8_t *data, size_t len) {
           bridgeState.calories = cal_raw / 97656.0f;
         }
 
-        // Serial.printf("Telem: Spd=%.1f Inc=%.1f\n", bridgeState.speed_kph,
-        // bridgeState.incline_pct);
+        // Check for changes and log immediately
+        static float last_spd = -1.0f;
+        static float last_inc = -999.0f;
+
+        if (abs(bridgeState.speed_kph - last_spd) > 0.1f ||
+            abs(bridgeState.incline_pct - last_inc) > 0.1f) {
+
+          Serial.printf("Telem Update: Spd=%.1f KPH Inc=%.1f%% (Dist=%.1f)\n",
+                        bridgeState.speed_kph, bridgeState.incline_pct,
+                        bridgeState.distance_m);
+
+          last_spd = bridgeState.speed_kph;
+          last_inc = bridgeState.incline_pct;
+        }
+
+        // Keep the periodic log for heartbeat, but make it less frequent (10s)
+        static uint32_t last_telem_print = 0;
+        if (millis() - last_telem_print > 10000) {
+          last_telem_print = millis();
+          Serial.printf("Telem Heartbeat: Spd=%.1f KPH Inc=%.1f%%\n",
+                        bridgeState.speed_kph, bridgeState.incline_pct);
+        }
       }
     }
   }

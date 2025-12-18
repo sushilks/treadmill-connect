@@ -4,6 +4,13 @@ from bleak import BleakClient, BleakScanner
 import struct
 import sys
 
+import logging
+
+# Configure Logging
+# logging.basicConfig(level=logging.INFO)
+# logger = logging.getLogger("bleak")
+# logger.setLevel(logging.DEBUG) # Catch low level BLE events
+
 DEVICE_NAME = "I_TL"
 # Alternate UUIDs (Service 1530-1212...)
 # WRITE_CHAR_UUID = "00001532-1212-efde-1523-785feabcd123" # Write Without Response
@@ -93,6 +100,9 @@ def decode_status(payload):
         if DEBUG_MODE: print(f"Error: {e}")
 
 def notification_handler(sender, data):
+    # Notify that we got data
+    # print(f"[RAW] {data.hex()}")
+    # Check for Reassembly
     # Debug: Confirm verify we get ANY data
     if DEBUG_MODE: print(f"RX: {data.hex().upper()}") # Debug
     for p in reassembler.process_chunk(data):
@@ -114,7 +124,12 @@ async def send_chunked_message(client, payload, char_obj=None):
     for pkt in chunks:
         target = char_obj if char_obj else WRITE_CHAR_UUID
         if DEBUG_MODE: print(f"TX: {pkt.hex().upper()}") # Debug TX
-        await client.write_gatt_char(target, pkt)
+        # Add timeout to prevent indefinite hang
+        try:
+             await asyncio.wait_for(client.write_gatt_char(target, pkt), timeout=5.0)
+        except asyncio.TimeoutError:
+             logger.error("Write Timeout! Device stuck?")
+             raise
         await asyncio.sleep(0.1) # SLOWER: 0.1 for stability
 
 async def main():
@@ -142,13 +157,12 @@ async def main():
 
         
         
-        # Debug: Print all chars
-        if DEBUG_MODE:
-            print("Discovered Services:")
-            for service in client.services:
-                print(f"Service: {service.uuid}")
-                for char in service.characteristics:
-                     print(f"  Char: {char.uuid} ({char.properties})")
+        # Always Print Services for Debugging
+        print("Discovered Services:")
+        for service in client.services:
+            print(f"Service: {service.uuid}")
+            for char in service.characteristics:
+                    print(f"  Char: {char.uuid} ({char.properties})")
         
         await client.start_notify(NOTIFY_CHAR_UUID, notification_handler)
         
@@ -170,8 +184,16 @@ async def main():
         for i, cmd in enumerate(init_cmds):
             if DEBUG_MODE: print(f"Sending Handshake CMD {i+1}/{len(init_cmds)}...")
             await send_chunked_message(client, cmd, write_char)
-            # Give time for response
-            await asyncio.sleep(0.5 if cmd in [CMD_7_ENABLE, CMD_9_START] else 0.2)
+            # Give time for response (Match ifit-ctrl.py)
+            if cmd == CMD_7_ENABLE:
+                print("Enabling... waiting 2s")
+                await asyncio.sleep(2.0) # Increased from 0.5s
+            elif cmd == CMD_8_UNK:
+                await asyncio.sleep(0.5)
+            elif cmd == CMD_9_START:
+                await asyncio.sleep(1.0)
+            else:
+                await asyncio.sleep(0.1)
             
         print("\nHandshake Complete.")
         print("="*60)
@@ -180,6 +202,7 @@ async def main():
         print("="*60)
         
         while True:
+            # print(".", end="", flush=True) # Heartbeat
             await send_chunked_message(client, CMD_POLL_STATUS, write_char)
             await asyncio.sleep(0.2)
 

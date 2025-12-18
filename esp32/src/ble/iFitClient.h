@@ -25,6 +25,7 @@ private:
   bool connect();
   void performHandshake();
   void sendChunked(const uint8_t *data, size_t length);
+  // void sendRaw(const uint8_t *data, size_t length); // Removed
   void sendControlCommand(uint8_t type, uint16_t value);
 
   // Telemetry
@@ -32,6 +33,11 @@ private:
   static void onResult(NimBLERemoteCharacteristic *pBLERemoteCharacteristic,
                        uint8_t *pData, size_t length, bool isNotify);
 
+public:
+  // State accessed by static callback
+  uint32_t last_rx_ms = 0;
+
+private:
   // State
   uint32_t last_poll_ms = 0;
 
