@@ -1,0 +1,19 @@
+[Unit]
+Description=iFit Treadmill Bridge (FTMS)
+After=bluetooth.service network.target
+Requires=bluetooth.service
+
+[Service]
+Type=simple
+User=root
+# Adjust path if different
+WorkingDirectory=/home/pi/work/treadmill-connect
+# Configure Bluetooth Controller BEFORE starting App
+ExecStartPre=/bin/bash /home/pi/work/treadmill-connect/pi/runtime_config.sh
+ExecStart=/bin/bash /home/pi/work/treadmill-connect/pi/startup.sh
+Restart=always
+RestartSec=10
+Environment="PYTHONUNBUFFERED=1"
+
+[Install]
+WantedBy=multi-user.target

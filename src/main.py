@@ -281,17 +281,27 @@ async def ifit_client_loop(server: BlessServer):
                 state.speed_kph = s_raw / 100.0
                 state.incline_pct = i_raw / 100.0
                 
-                # Distance (Cumulative Meters) - Source: ifit-ctrl.py (verified working)
-                # Offset 42, Unit: 0.01 Meters? (d / 100 = meters)
+                # Distance Strategy: Prefer Treadmill, Fallback to Calculation
                 if len(payload) >= 46:
                     d_raw = struct.unpack_from('<I', payload, 42)[0]
-                    state.distance_m = d_raw / 100.0
+                    dist_val = d_raw / 100.0
                     
-                    # Log for verification
-                    if DEBUG_MODE: logger.info(f"Dist Update: {state.distance_m}m (Raw: {d_raw})")
+                    # If Treadmill reports 0 but we are moving, use calculation
+                    if dist_val > 0:
+                        state.distance_m = dist_val
+                    else:
+                        # Calculated Distance Fallback
+                        current_time = time.time()
+                        if hasattr(state, 'last_calc_time'):
+                            dt = current_time - state.last_calc_time
+                            if dt > 0 and dt < 2.0: # Ignore large jumps
+                                m_per_s = (state.speed_kph * 1000) / 3600.0
+                                state.distance_m += (m_per_s * dt)
+                        state.last_calc_time = current_time
+                    
+                    if DEBUG_MODE: logger.info(f"Dist: {state.distance_m:.2f}m (Raw: {d_raw})")
                 else:
-                    # Fallback or just ignore
-                    pass
+                     pass
                 
                 # Time (Offset 27)
                 if len(payload) >= 31:
@@ -317,13 +327,24 @@ async def ifit_client_loop(server: BlessServer):
         try:
             # Bleak 0.19.5 Compatibility: find_device_by_name might not exist
             # Use discover and filter manually
-            devices = await BleakScanner.discover()
-            device = next((d for d in devices if d.name == IFIT_DEVICE_NAME), None)
+            # Pi Mode: We need RSSI to debug signal strength
+            if PI_MODE:
+                 devices_map = await BleakScanner.discover(return_adv=True)
+                 # devices_map is dict{addr: (device, adv)}
+                 target_entry = next((e for e in devices_map.values() if e[0].name == IFIT_DEVICE_NAME), None)
+                 device = target_entry[0] if target_entry else None
+                 rssi = target_entry[1].rssi if target_entry else 0
+            else:
+                 devices = await BleakScanner.discover()
+                 device = next((d for d in devices if d.name == IFIT_DEVICE_NAME), None)
+                 rssi = getattr(device, 'rssi', 0) if device else 0
             
             if device:
-                async with BleakClient(device) as client:
-                    state.connected_to_ifit = True
-            if device:
+                if PI_MODE:
+                    logger.info(f"Found iFit Device: {device.name} (RSSI: {rssi})")
+                    if rssi < -80 and rssi != 0:
+                         logger.warning(f"⚠️ Weak Signal ({rssi} dBm). Move Pi closer to Treadmill!")
+                
                 async with BleakClient(device) as client:
                     state.connected_to_ifit = True
                     logger.info("Connected to iFit Treadmill")
@@ -647,13 +668,18 @@ async def ftms_server_loop():
     )
     
     # Control Point (Write + Indicate)
+    # Pi Mode: Use Notify (Fire & Forget) to avoid Mandatory Pairing Request
+    cp_props = GATTCharacteristicProperties.write | (GATTCharacteristicProperties.notify if PI_MODE else GATTCharacteristicProperties.indicate)
+    
     await server.add_new_characteristic(
         FTMS_SERVICE_UUID,
         FTMS_CONTROL_POINT_UUID,
-        GATTCharacteristicProperties.write | GATTCharacteristicProperties.indicate,
+        cp_props,
         None,
         GATTAttributePermissions.writeable
     )
+
+
     
     # Feature (Read)
     # Features (2ACC)
@@ -750,31 +776,61 @@ async def ftms_server_loop():
     )
 
     # GAP Appearance (Treadmill = 1348 = 0x0544)
-    # Important for apps to know what icon to show or how to treat data
-    # Note: bless might handle 1800 automatically, but we try to force 2A01
-    GAP_SERVICE_UUID = "00001800-0000-1000-8000-00805F9B34FB"
-    # Try adding to existing service if possible, or new one
-    try:
-        await server.add_new_service(GAP_SERVICE_UUID)
-    except Exception:
-        pass # Service might exist
-        
-    await server.add_new_characteristic(
-        GAP_SERVICE_UUID,
-        "00002A01-0000-1000-8000-00805F9B34FB",
-        GATTCharacteristicProperties.read,
-        struct.pack('<H', 0x0544),
-        GATTAttributePermissions.readable
-    )
+    # Pi Mode: BlueZ manages GAP. Do NOT add it manually or it crashes.
+    if not PI_MODE:
+        GAP_SERVICE_UUID = "00001800-0000-1000-8000-00805F9B34FB"
+        # Try adding to existing service if possible, or new one
+        try:
+            await server.add_new_service(GAP_SERVICE_UUID)
+        except Exception:
+            pass # Service might exist
+            
+        await server.add_new_characteristic(
+            GAP_SERVICE_UUID,
+            "00002A01-0000-1000-8000-00805F9B34FB",
+            GATTCharacteristicProperties.read,
+            struct.pack('<H', 0x0544),
+            GATTAttributePermissions.readable
+        )
 
     logger.info(f"Advertising as {SERVER_NAME}...")
+    
+    # --- PI MODE FIXES ---
+    if PI_MODE:
+        try:
+            from bless.backends.bluezdbus.application import BlueZGattApplication
+            # Monkey Patch: BlueZ owns GAP (1800). Prevent Bless from trying to claim it.
+            original_add_service = BlueZGattApplication.add_service
+            def patched_add_service(self, service):
+                if str(service.uuid).upper() == "00001800-0000-1000-8000-00805F9B34FB":
+                    logger.info("Ghost Patch: Skipping GAP Service Registration (BlueZ Owned)")
+                    return
+                return original_add_service(self, service)
+            BlueZGattApplication.add_service = patched_add_service
+        except ImportError:
+            # Expected on Mac/Windows
+            logger.debug("Could not apply BlueZ Monkey Patch (Backend not found?)")
+            
+    # Update Model Number for clarity
+    if PI_MODE: 
+        pass 
+
     # Explicitly advertise ONLY FTMS to avoid packet overflow
     # DIS and GAP are still discoverable after connection
-    # Advertise both FTMS and DIS (if space permits)
-    # DIS is often used by apps to filter valid devices
-    # Explicitly advertise ONLY FTMS to avoid packet overflow (31 bytes max)
-    # DIS is discoverable after connection
     await server.start(advertising_service_uuids=[FTMS_SERVICE_UUID])
+    
+    # --- PI MODE SECURITY ENFORCEMENT ---
+    # Bless/BlueZ often resets 'pairable' to on during Start. We must force it OFF now.
+    if PI_MODE:
+        import subprocess
+        try:
+            logger.info("Enforcing LE Security: Pairable=OFF via bluetoothctl")
+            subprocess.run(["bluetoothctl", "pairable", "off"], check=False)
+            # Ensure visibility is still ON
+            subprocess.run(["bluetoothctl", "discoverable", "on"], check=False)
+        except Exception as e:
+            logger.error(f"Failed to enforce security: {e}")
+    # ------------------------------------
     
     # Start Client Loop in background
     if "--mock" in sys.argv:
@@ -785,6 +841,9 @@ async def ftms_server_loop():
     # Server Keepalive & Response Processor
     # Start Telemetry Loop
     asyncio.create_task(ftms_telemetry_loop(server))
+    
+    # Start Security Watchdog
+    asyncio.create_task(security_watchdog_loop())
     
     while True:
         # 1. Process Indications (FAST)
@@ -807,6 +866,27 @@ async def ftms_telemetry_loop(server: BlessServer):
         if state.connected_to_ifit:
             await update_ftms(server)
         await asyncio.sleep(0.5) # Check often, update_ftms filters dupes
+
+# Security Watchdog (Persistent Enforcement)
+async def security_watchdog_loop():
+    if not PI_MODE:
+        return
+        
+    logger.info("Starting Security Watchdog (Interval: 10s)...")
+    import subprocess
+    
+    while True:
+        try:
+            # Check current state
+            result = subprocess.run(["bluetoothctl", "show"], capture_output=True, text=True)
+            if "Pairable: yes" in result.stdout:
+                logger.warning("Watchdog: Pairable is ON. Forcing OFF.")
+                subprocess.run(["bluetoothctl", "pairable", "off"], check=False)
+                subprocess.run(["bluetoothctl", "discoverable", "on"], check=False)
+        except Exception as e:
+            logger.error(f"Watchdog Error: {e}")
+            
+        await asyncio.sleep(10.0)
 
 # =============================================================================
 # MAIN
@@ -838,12 +918,14 @@ if __name__ == "__main__":
     parser.add_argument('--mock', action='store_true', help='Run in simulation mode')
     parser.add_argument('--debug', action='store_true', help='Enable verbose logging')
     parser.add_argument('--name', type=str, default="mytm", help='Bluetooth name to advertise (default: mytm)')
+    parser.add_argument('--pi-mode', action='store_true', help='Enable Raspberry Pi optimizations (Ghost Patch, LomaPi, No-Pair)')
     
     args = parser.parse_args()
     
     MOCK_MODE = args.mock
     DEBUG_MODE = args.debug
-    SERVER_NAME = args.name
+    SERVER_NAME = "iFitPi" if args.pi_mode else args.name # Default iFitPi for Pi
+    PI_MODE = args.pi_mode
     
     if DEBUG_MODE:
         logger.setLevel(logging.DEBUG)
