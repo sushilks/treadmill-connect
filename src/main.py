@@ -409,6 +409,8 @@ async def ifit_client_loop(server: BlessServer):
                                          idx = parts.index('handle')
                                          handle = parts[idx+1]
                                          logger.warning(f"🧟 Zombie Detected ({device_address} hdl={handle}). Surgically removing...")
+                                         # Fix Race: Stop Adv BEFORE disconnecting
+                                         subprocess.run(["sudo", "hciconfig", "hci0", "noleadv"], check=False)
                                          subprocess.run(["sudo", "hcitool", "ledc", handle], check=False)
                                          await asyncio.sleep(1.5) # Wait for controller to update
                                      except: pass
@@ -1058,6 +1060,7 @@ async def monitor_ftms_connection_loop():
                          # 2. Reject Connection (Force Disconnect)
                          if handle:
                              logger.info(f"🚫 Rejecting Client (hdl={handle}) to free radio for iFit Connect...")
+                             subprocess.run(["sudo", "hciconfig", "hci0", "noleadv"], check=False)
                              subprocess.run(["sudo", "hcitool", "ledc", handle], check=False)
                          
                          # 3. Signal iFit Loop to Connect
