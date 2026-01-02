@@ -50,6 +50,8 @@ logger = logging.getLogger(__name__)
 class ConsoleUI:
     def __init__(self):
         self.status_line = ""
+        self.is_tty = sys.stdout.isatty()
+        self.last_print_time = 0
         
     def update_status(self, state):
         # Format: [Linked] Spd: 5.0 | Inc: 1.0 | Dist: 1.25 | Time: 20:30 | Cal: 150
@@ -73,18 +75,27 @@ class ConsoleUI:
         self.refresh()
 
     def refresh(self):
-        # Clear line, print status, no newline (stays at bottom)
-        sys.stdout.write(f"\r\x1b[K{self.status_line}")
-        sys.stdout.flush()
+        if self.is_tty:
+            # Interactive: Update line in place with ANSI codes
+            sys.stdout.write(f"\r\x1b[K{self.status_line}")
+            sys.stdout.flush()
+        else:
+            # Headless: Print cleanly (no control chars) and throttle (1s) to avoid log spam
+            if time.time() - self.last_print_time > 1.0:
+                 print(self.status_line, flush=True) 
+                 self.last_print_time = time.time()
         
     def log(self, message):
-        # Clear status line
-        sys.stdout.write("\r\x1b[K")
-        # Print message (scrolled)
-        sys.stdout.write(f"{message}\n")
-        # Reprint status line
-        sys.stdout.write(self.status_line)
-        sys.stdout.flush()
+        if self.is_tty:
+            # Clear status line
+            sys.stdout.write("\r\x1b[K")
+            # Print message (scrolled)
+            sys.stdout.write(f"{message}\n")
+            # Reprint status line
+            sys.stdout.write(self.status_line)
+            sys.stdout.flush()
+        else:
+            print(message, flush=True)
 
 ui = ConsoleUI()
 
@@ -106,7 +117,8 @@ logger.addHandler(handler)
 # =============================================================================
 # IFIT CLIENT CONSTANTS (From ifit-ctrl.py)
 # =============================================================================
-IFIT_DEVICE_NAME = "I_TL"
+import os
+IFIT_DEVICE_NAME = os.environ.get("IFIT_DEVICE_NAME", "I_TL")
 UUID_TX = "00001534-1412-efde-1523-785feabcd123"
 UUID_RX = "00001535-1412-efde-1523-785feabcd123"
 POLL_CMD = bytes.fromhex("02040210041002000A13943300104010008018F2")
@@ -158,6 +170,9 @@ class BridgeState:
         self.distance_m = 0 # Cumulative
         self.elapsed_time = 0 
         self.calories = 0
+        self.ftms_client_connected = False
+        self.ftms_last_activity_time = time.time()  # Initialize to now, not 0
+        self.pause_hci_monitor = False  # Pause hcitool while scanning/connecting to iFit
         self.control_queue = asyncio.Queue()
         self.last_notify_time = time.time()
         self.response_queue = asyncio.Queue()
@@ -266,6 +281,25 @@ async def ifit_client_loop(server: BlessServer):
     reassembler = PacketReassembler()
     
     def decode_telemetry(sender, data):
+        # ... (Existing Decode Logic remains same, omitted for brevity, logic is inside inner loop)
+        # We need to define this function or keep the existing one.
+        # Ideally we only modify the LOOP structure around it.
+        pass
+
+    # Re-define decode locally or assume we wrap the existing logic? 
+    # Since I'm using multi-replace, I should replace the LOOP logic primarily.
+    # But decode_telemetry is inside the function scope.
+    # Let me preserve decode_telemetry by NOT replacing it, but I cannot modify the loop *around* it easily without touching it.
+    # ACTUALLY: decode_telemetry is huge. I should try to leave it alone.
+    # I will replace the START of the function and the WHILE loop, but I have to be careful about indentation.
+    
+    # Let's extract decode_telemetry logic if possible? No, it uses local variables like reassembler.
+    
+    # BETTER APPROACH: Modify the 'while True' loop and the connection logic, keeping the inner helper intact if possible.
+    # But the inner helper is defined *inside* the function.
+    
+    # Strategy: Replace the entire function `ifit_client_loop`.
+    # I will copy the decode_telemetry from the source file content I have.
         try:
              # Feed Watchdog
              state.last_notify_time = time.time()
@@ -286,32 +320,25 @@ async def ifit_client_loop(server: BlessServer):
                     d_raw = struct.unpack_from('<I', payload, 42)[0]
                     dist_val = d_raw / 100.0
                     
-                    # If Treadmill reports 0 but we are moving, use calculation
                     if dist_val > 0:
                         state.distance_m = dist_val
                     else:
-                        # Calculated Distance Fallback
                         current_time = time.time()
                         if hasattr(state, 'last_calc_time'):
                             dt = current_time - state.last_calc_time
-                            if dt > 0 and dt < 2.0: # Ignore large jumps
+                            if dt > 0 and dt < 2.0: 
                                 m_per_s = (state.speed_kph * 1000) / 3600.0
                                 state.distance_m += (m_per_s * dt)
                         state.last_calc_time = current_time
-                    
-                    if DEBUG_MODE: logger.info(f"Dist: {state.distance_m:.2f}m (Raw: {d_raw})")
-                else:
-                     pass
                 
                 # Time (Offset 27)
                 if len(payload) >= 31:
                      t_raw = struct.unpack_from('<I', payload, 27)[0]
-                     state.elapsed_time = t_raw # Seconds (was incorrectly /1000)
+                     state.elapsed_time = t_raw 
                     
                 # Calories
                 if len(payload) >= 35:
                      cal_raw = struct.unpack_from('<I', payload, 31)[0]
-                     # Formula from ifit-ctrl.py: Raw / 97656.0
                      state.calories = int(cal_raw / 97656.0) 
                 
                 # Notify FTMS (Fire and Forget)
@@ -322,15 +349,32 @@ async def ifit_client_loop(server: BlessServer):
         except Exception as e:
              logger.error(f"Decode Error: {e}")
 
-    logger.info("Starting iFit Client Loop...")
+    logger.info("Starting iFit Client Loop (Lazy Mode - Handoff Strategy)...")
     while True:
         try:
-            # Bleak 0.19.5 Compatibility: find_device_by_name might not exist
-            # Use discover and filter manually
-            # Pi Mode: We need RSSI to debug signal strength
+            # 0. LAZY WAIT: Only proceed if FTMS Client is connected (or Handoff Signaled)
+            if not state.ftms_client_connected and PI_MODE:
+                # Wait for client...
+                await asyncio.sleep(1.0)
+                continue
+            
+            # 1. Discovery - PAUSE HCI MONITOR TO AVOID BLUEZ CONTENTION
+            state.pause_hci_monitor = True
+            
+            # SILENCE PHASE: Stop Advertising so phone cannot reconnect while we are busy
+            if PI_MODE:
+                try:
+                    logger.info("🤫 Stopping Advertising (Silence Phase via hciconfig)...")
+                    # bless doesn't expose stop_advertising for BlueZ, use system tool
+                    import subprocess
+                    subprocess.run(["sudo", "hciconfig", "hci0", "noleadv"], check=False)
+                    await asyncio.sleep(0.5) 
+                except Exception as adv_e:
+                    logger.warning(f"Failed to stop advertising: {adv_e}")
+            
+            # Use Standard Scanning (Handoff Strategy clears the air for this)
             if PI_MODE:
                  devices_map = await BleakScanner.discover(return_adv=True)
-                 # devices_map is dict{addr: (device, adv)}
                  target_entry = next((e for e in devices_map.values() if e[0].name == IFIT_DEVICE_NAME), None)
                  device = target_entry[0] if target_entry else None
                  rssi = target_entry[1].rssi if target_entry else 0
@@ -340,85 +384,163 @@ async def ifit_client_loop(server: BlessServer):
                  rssi = getattr(device, 'rssi', 0) if device else 0
             
             if device:
+                # Get address - device is BLEDevice object
+                device_address = device.address
+                device_name = device.name
+                
                 if PI_MODE:
-                    logger.info(f"Found iFit Device: {device.name} (RSSI: {rssi})")
+                    logger.info(f"Found iFit Device: {device_name} (RSSI: {rssi})")
                     if rssi < -80 and rssi != 0:
                          logger.warning(f"⚠️ Weak Signal ({rssi} dBm). Move Pi closer to Treadmill!")
                 
-                async with BleakClient(device) as client:
-                    state.connected_to_ifit = True
-                    logger.info("Connected to iFit Treadmill")
-                    
-                    # Ensure services are resolved
-                    # if not client.services: await client.get_services() # Removed in Bleak 2.0
-                    
-                    # Fix: Resolve Write Char Object
-                    write_char = client.services.get_characteristic(UUID_TX)
-                    if not write_char:
-                        logger.error(f"Could not find Write Char {UUID_TX}")
-                        state.connected_to_ifit = False
-                        continue # Retry
+                # PRE-EMPTIVE ZOMBIE KILLER (Targeted)
+                if PI_MODE:
+                     try:
+                         import subprocess
+                         # Check if we are already 'physically' connected to the treadmill (Zombie)
+                         proc = subprocess.run(["sudo", "hcitool", "con"], capture_output=True, text=True)
+                         if device_address in proc.stdout:
+                             # Parse handle. fmt: "> LE 61:36:1D:64:12:F3 handle 2 state 1 lm SLAVE"
+                             # We look for the line with our MAC
+                             for line in proc.stdout.split('\n'):
+                                 if device_address in line and "handle" in line:
+                                     parts = line.split()
+                                     try:
+                                         idx = parts.index('handle')
+                                         handle = parts[idx+1]
+                                         logger.warning(f"🧟 Zombie Detected ({device_address} hdl={handle}). Surgically removing...")
+                                         subprocess.run(["sudo", "hcitool", "ledc", handle], check=False)
+                                         await asyncio.sleep(1.5) # Wait for controller to update
+                                     except: pass
+                     except Exception as e:
+                         logger.error(f"Pre-emptive Kill Error: {e}")
 
-                    await client.start_notify(UUID_RX, decode_telemetry)
-                    await robust_handshake(client, write_char)
-                    logger.info("Handshake Complete. Loop Active.")
-                    # 4. Watchdog: Reconnect if no telemetry for 5 seconds
-                    if time.time() - state.last_notify_time > 5.0:
-                         logger.warning("Watchdog: No data from Treadmill for 5s. Reconnecting...")
-                         break
+                # INNER RETRY LOOP - Skip rescan on timeout, retry with same device
+                for attempt in range(3):
+                    try:
+                        # FAIL FAST: 10s timeout
+                        async with BleakClient(device, timeout=10.0, disconnected_callback=lambda c: logger.warning("⚠️ iFit Link Lost (Callback)")) as client:
+                            state.connected_to_ifit = True
+                            logger.info(f"Connected to iFit Treadmill (Attempt {attempt+1})")
+                            
+                            write_char = client.services.get_characteristic(UUID_TX)
+                            if not write_char:
+                                logger.error(f"Could not find Write Char {UUID_TX}")
+                                state.connected_to_ifit = False
+                                break  # Break inner loop, rescan
 
-                    # Loop Control
-                    while client.is_connected:
-                        current_time = time.time()
-                        
-                        # 1. Process Queue (Limit to 5 consecutive commands to ensure we poll)
-                        command_count = 0
-                        command_sent = False
-                        
-                        while not state.control_queue.empty() and command_count < 5:
-                            cmd_type, val = await state.control_queue.get()
-                            pkt = create_control_command(cmd_type, val)
-                            if pkt:
-                                logger.debug(f"Sending Command: Type={cmd_type} Val={val}")
+                            await client.start_notify(UUID_RX, decode_telemetry)
+                            await robust_handshake(client, write_char)
+                            logger.info("Handshake Complete. Loop Active.")
+                            
+                            # RESUME HCI MONITOR - Connection established
+                            state.pause_hci_monitor = False
+                            
+                            # WAKE UP PHASE: Restart Advertising so phone can reconnect
+                            if PI_MODE:
+                                logger.info("⏳ Stabilizing Link (Wait 3s)...")
+                                await asyncio.sleep(3.0) 
                                 try:
-                                    await send_chunked_robust(client, pkt, write_char)
-                                    command_sent = True
-                                    command_count += 1
-                                    await asyncio.sleep(0.1)
-                                except Exception as e:
-                                    logger.error(f"Command Send Error: {e}")
-                                    break # Break inner to hit outer break
-                        
-                        # Check loop break
-                        if not client.is_connected: break
+                                    logger.info("📢 Restarting Advertising (hciconfig leadv 0)...")
+                                    import subprocess
+                                    subprocess.run(["sudo", "hciconfig", "hci0", "leadv", "0"], check=False)
+                                except Exception as adv_e:
+                                    logger.warning(f"Failed to start advertising: {adv_e}")
+                            
+                            # Connection Loop
+                            while client.is_connected:
+                                current_time = time.time()
+                                
+                                # --- DISCONNECT CHECK ---
+                                if not state.ftms_client_connected and PI_MODE:
+                                    idle_time = current_time - state.ftms_last_activity_time
+                                    if idle_time > 60.0:
+                                        logger.info(f"💤 Idle for {idle_time:.1f}s. Disconnecting from iFit to save power.")
+                                        break
+                                
+                                # 1. Process Queue
+                                command_count = 0
+                                command_sent = False
+                                while not state.control_queue.empty() and command_count < 5:
+                                    cmd_type, val = await state.control_queue.get()
+                                    pkt = create_control_command(cmd_type, val)
+                                    if pkt:
+                                        logger.debug(f"Sending Command: Type={cmd_type} Val={val}")
+                                        try:
+                                            await send_chunked_robust(client, pkt, write_char)
+                                            command_sent = True
+                                            command_count += 1
+                                            await asyncio.sleep(0.1)
+                                        except Exception as e:
+                                            logger.error(f"Command Send Error: {e}")
+                                            break 
+                                if not client.is_connected: break
 
-                        # 2. Poll (If Idle OR forced every 1.0s)
-                        # If we spent time sending commands, we still need to poll periodically?
-                        # Actually standard poll is fine if we limit command burst.
-                        if not command_sent or (current_time - state.last_notify_time > 1.0):
-                             try:
-                                await send_chunked_robust(client, POLL_CMD, write_char)
-                             except Exception as e:
-                                logger.error(f"Poll Write Error: {e}")
-                                break
+                                # 2. Poll
+                                if not command_sent or (current_time - state.last_notify_time > 1.0):
+                                     try:
+                                        await send_chunked_robust(client, POLL_CMD, write_char)
+                                     except Exception as e:
+                                        logger.error(f"Poll Write Error: {e}")
+                                        break
+                                
+                                # 3. Watchdog Check
+                                if time.time() - state.last_notify_time > 5.0:
+                                     logger.warning("Watchdog: Telemetry Stalled > 5s. Reconnecting...")
+                                     break
+                                     
+                                await asyncio.sleep(0.2) 
+                                
+                            state.connected_to_ifit = False
+                            logger.info("Client Disconnected (Loop Ended)")
+                            break  # Success - break inner retry loop
+                            
+                    except asyncio.TimeoutError:
+                        # Timeout! Clear ghost and retry IMMEDIATELY (no rescan)
+                        logger.warning(f"⏱️ Timeout on Attempt {attempt+1}/3. Clearing line...")
+                        try:
+                            import subprocess
+                            subprocess.run(["bluetoothctl", "disconnect", device_address], check=False, timeout=2.0)
+                        except: pass
+                        await asyncio.sleep(0.5)  # Brief pause
+                        continue  # Retry with same device object
                         
-                        # 3. Watchdog Check
-                        if time.time() - state.last_notify_time > 5.0:
-                             logger.warning("Watchdog: Telemetry Stalled > 5s. Reconnecting...")
-                             break
-                             
-                        await asyncio.sleep(0.2) # 5Hz Update Rate
+                    except Exception as e:
+                        logger.error(f"Connect Error (Att {attempt+1}): {repr(e)}")
+                        break  # Other errors - break and rescan
                         
-                    state.connected_to_ifit = False
-                    logger.info("Client Disconnected (Loop Ended)")
             else:
                 logger.debug("iFit Device not found, retrying...")
-                await asyncio.sleep(2.0) # Faster retry
+                await asyncio.sleep(2.0) 
                 
         except Exception as e:
-            logger.error(f"iFit Client Error: {e}")
+            import traceback
+            logger.error(f"iFit Client Error: {repr(e)}")
+            logger.debug(traceback.format_exc())
             state.connected_to_ifit = False
-            await asyncio.sleep(5.0)
+            state.pause_hci_monitor = False  # RESUME HCI MONITOR on error
+            
+            # RECOVERY: Restart Advertising so we don't stay silent
+            if PI_MODE:
+                try:
+                    import subprocess
+                    subprocess.run(["sudo", "hciconfig", "hci0", "leadv", "0"], check=False)
+                except: pass
+            
+            # Zombie Killer: If we timed out, BlueZ might think we are connected. Force disconnect.
+            if "TimeoutError" in repr(e) and 'device_address' in locals() and device_address:
+                try:
+                    logger.warning(f"Timeout detected. Attempting to clear ghost connection to {device_address}...")
+                    import subprocess
+                    subprocess.run(["bluetoothctl", "disconnect", device_address], check=False, timeout=5.0)
+                except Exception as z:
+                    logger.error(f"Zombie Killer Failed: {z}")
+            
+            # Fast retry for TimeoutError, slower for other errors
+            if "TimeoutError" in repr(e):
+                await asyncio.sleep(1.0)  # Quick retry after cleanup
+            else:
+                await asyncio.sleep(5.0)
 
 async def update_ftms(server: BlessServer):
     if not server or not state.connected_to_ifit: return
@@ -845,6 +967,9 @@ async def ftms_server_loop():
     # Start Security Watchdog
     asyncio.create_task(security_watchdog_loop())
     
+    # Start Connection Monitor
+    asyncio.create_task(monitor_ftms_connection_loop())
+    
     while True:
         # 1. Process Indications (FAST)
         while not state.response_queue.empty():
@@ -887,6 +1012,92 @@ async def security_watchdog_loop():
             logger.error(f"Watchdog Error: {e}")
             
         await asyncio.sleep(10.0)
+
+# Connection Monitor (Lazy Connect Support)
+async def monitor_ftms_connection_loop():
+    if not PI_MODE:
+        return
+        
+    logger.info("Starting Connection Monitor (Interval: 3s)...")
+    import subprocess
+    
+    while True:
+        try:
+            # PAUSE CHECK: Skip hcitool if iFit loop is scanning/connecting
+            if state.pause_hci_monitor:
+                await asyncio.sleep(1.0)
+                continue
+                
+            # Check hcitool con for SLAVE connections (Incoming from Phone)
+            # Output: "> LE 61:36:1D:64:12:F3 handle 2 state 1 lm SLAVE"
+            result = subprocess.run(["sudo", "hcitool", "con"], capture_output=True, text=True)
+            
+            if "SLAVE" in result.stdout:
+                 if not state.ftms_client_connected:
+                     # FIRST CONNECTION DETECTED!
+                     
+                     # HANDOFF STRATEGY: 
+                     # If iFit is NOT connected, we must disconnect the FTMS client first 
+                     # to avoid BlueZ contention during the outgoing connection.
+                     if not state.connected_to_ifit:
+                         logger.info("📲 FTMS Client Detected but iFit Disconnected. Starting Handoff...")
+                         
+                         # 1. Parse Handle to Kill
+                         handle = None
+                         for line in result.stdout.split('\n'):
+                             if "SLAVE" in line and "handle" in line:
+                                 parts = line.split()
+                                 try:
+                                     idx = parts.index('handle')
+                                     handle = parts[idx+1]
+                                     break
+                                 except: pass
+                         
+                         # 2. Reject Connection (Force Disconnect)
+                         if handle:
+                             logger.info(f"🚫 Rejecting Client (hdl={handle}) to free radio for iFit Connect...")
+                             subprocess.run(["sudo", "hcitool", "ledc", handle], check=False)
+                         
+                         # 3. Signal iFit Loop to Connect
+                         logger.info("Signal: iFit Connect Requested")
+                         state.ftms_client_connected = True
+                         state.ftms_last_activity_time = time.time()
+                         
+                     else:
+                         # iFit already connected, accept client normally
+                         logger.info(f"📲 FTMS Client Connected! (iFit already active)")
+                         state.ftms_client_connected = True
+                         state.ftms_last_activity_time = time.time()
+            elif "Connections:" in result.stdout and len(result.stdout) > 20:
+                 # Debug: Show us what it sees if not SLAVE but has content
+                 # logger.debug(f"HCI Output (No SLAVE): {result.stdout.strip()}")
+                 pass
+            
+            # Simple check: do we see "SLAVE"?
+            # More robust: check for LE and SLAVE
+            has_client = "SLAVE" in result.stdout
+            
+            if has_client and not state.ftms_client_connected:
+                logger.info("📲 FTMS Client Connected! (Waking up...)")
+                state.ftms_client_connected = True
+                state.ftms_last_activity_time = time.time()
+                
+            elif not has_client and state.ftms_client_connected:
+                logger.info("📲 FTMS Client Disconnected (Starting Timer...)")
+                state.ftms_client_connected = False
+                state.ftms_last_activity_time = time.time() # Start timer from disconnect
+            
+            # Just touch activity time if connected? 
+            # No, last_activity is used for disconnect timer. 
+            # If connected, we are "active".
+            if state.ftms_client_connected:
+                 state.ftms_last_activity_time = time.time()
+                 
+        except Exception as e:
+            logger.error(f"Monitor Error: {e}")
+            
+        await asyncio.sleep(3.0)
+
 
 # =============================================================================
 # MAIN

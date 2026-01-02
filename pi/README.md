@@ -64,7 +64,18 @@ sudo systemctl enable ifit-bridge
 sudo systemctl start ifit-bridge
 ```
 
-### 5. Apply Static Configuration (One-Time)
+### 5. Configuration (Optional)
+If your treadmill is not named "I_TL", you can configure the target name by setting an environment variable in the service file.
+
+1. Edit the service: `sudo systemctl edit ifit-bridge`
+2. Add the following lines:
+   ```ini
+   [Service]
+   Environment="IFIT_DEVICE_NAME=NordicTrack 1750"
+   ```
+3. Save and Restart: `sudo systemctl restart ifit-bridge`
+
+### 6. Apply Static Configuration (One-Time)
 Run the improved installer script to lock down `/etc/bluetooth/main.conf`.
 
 ```bash
