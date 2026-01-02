@@ -790,8 +790,10 @@ async def ftms_server_loop():
     )
     
     # Control Point (Write + Indicate)
-    # Pi Mode: Use Notify (Fire & Forget) to avoid Mandatory Pairing Request
-    cp_props = GATTCharacteristicProperties.write | (GATTCharacteristicProperties.notify if PI_MODE else GATTCharacteristicProperties.indicate)
+    # Control Point (Write + Indicate)
+    # FTMS Spec requires Indicate. Some apps check this property strictcly.
+    # Enabling Indicate with Pairable=OFF works on BlueZ if permissions allow.
+    cp_props = GATTCharacteristicProperties.write | GATTCharacteristicProperties.indicate
     
     await server.add_new_characteristic(
         FTMS_SERVICE_UUID,
