@@ -177,7 +177,10 @@ class BridgeState:
         self.last_notify_time = time.time()
         self.response_queue = asyncio.Queue()
         self.last_ftms_payload = None
+        self.last_ftms_payload = None
         self.last_update_ts = 0
+        self.initial_t_raw = None
+        self.initial_cal_raw = None
 
 state = BridgeState()
 
@@ -334,12 +337,16 @@ async def ifit_client_loop(server: BlessServer):
                 # Time (Offset 27)
                 if len(payload) >= 31:
                      t_raw = struct.unpack_from('<I', payload, 27)[0]
-                     state.elapsed_time = t_raw 
+                     if state.initial_t_raw is None: state.initial_t_raw = t_raw
+                     if t_raw < state.initial_t_raw: state.initial_t_raw = t_raw # Handle wrap/reset
+                     state.elapsed_time = t_raw - state.initial_t_raw
                     
                 # Calories
                 if len(payload) >= 35:
                      cal_raw = struct.unpack_from('<I', payload, 31)[0]
-                     state.calories = int(cal_raw / 97656.0) 
+                     if state.initial_cal_raw is None: state.initial_cal_raw = cal_raw
+                     if cal_raw < state.initial_cal_raw: state.initial_cal_raw = cal_raw
+                     state.calories = int((cal_raw - state.initial_cal_raw) / 97656.0) 
                 
                 # Notify FTMS (Fire and Forget)
                 asyncio.create_task(update_ftms(server))
@@ -423,6 +430,8 @@ async def ifit_client_loop(server: BlessServer):
                         # FAIL FAST: 10s timeout
                         async with BleakClient(device, timeout=10.0, disconnected_callback=lambda c: logger.warning("⚠️ iFit Link Lost (Callback)")) as client:
                             state.connected_to_ifit = True
+                            state.initial_t_raw = None
+                            state.initial_cal_raw = None
                             logger.info(f"Connected to iFit Treadmill (Attempt {attempt+1})")
                             
                             write_char = client.services.get_characteristic(UUID_TX)
@@ -1033,10 +1042,14 @@ async def monitor_ftms_connection_loop():
                 continue
                 
             # Check hcitool con for SLAVE connections (Incoming from Phone)
-            # Output: "> LE 61:36:1D:64:12:F3 handle 2 state 1 lm SLAVE"
+            # Output: "> LE 61:36:1D:64:12:F3 handle 2 state 1 lm SLAVE" 
+            # OR: "> LE ... lm PERIPHERAL" (Newer BlueZ)
             result = subprocess.run(["sudo", "hcitool", "con"], capture_output=True, text=True)
             
-            if "SLAVE" in result.stdout:
+            # Check for either SLAVE or PERIPHERAL
+            has_client = "SLAVE" in result.stdout or "PERIPHERAL" in result.stdout
+
+            if has_client:
                  if not state.ftms_client_connected:
                      # FIRST CONNECTION DETECTED!
                      
@@ -1049,7 +1062,7 @@ async def monitor_ftms_connection_loop():
                          # 1. Parse Handle to Kill
                          handle = None
                          for line in result.stdout.split('\n'):
-                             if "SLAVE" in line and "handle" in line:
+                             if ("SLAVE" in line or "PERIPHERAL" in line) and "handle" in line:
                                  parts = line.split()
                                  try:
                                      idx = parts.index('handle')
@@ -1075,12 +1088,8 @@ async def monitor_ftms_connection_loop():
                          state.ftms_last_activity_time = time.time()
             elif "Connections:" in result.stdout and len(result.stdout) > 20:
                  # Debug: Show us what it sees if not SLAVE but has content
-                 # logger.debug(f"HCI Output (No SLAVE): {result.stdout.strip()}")
+                 logger.info(f"HCI Output (Non-SLAVE/Debug): {result.stdout.strip()}")
                  pass
-            
-            # Simple check: do we see "SLAVE"?
-            # More robust: check for LE and SLAVE
-            has_client = "SLAVE" in result.stdout
             
             if has_client and not state.ftms_client_connected:
                 logger.info("📲 FTMS Client Connected! (Waking up...)")
@@ -1140,7 +1149,7 @@ if __name__ == "__main__":
     
     MOCK_MODE = args.mock
     DEBUG_MODE = args.debug
-    SERVER_NAME = "iFitPi" if args.pi_mode else args.name # Default iFitPi for Pi
+    SERVER_NAME = os.environ.get("IFIT_BRIDGE_NAME", "iFitPi") if args.pi_mode else args.name # Default iFitPi for Pi (or env var)
     PI_MODE = args.pi_mode
     
     if DEBUG_MODE:
