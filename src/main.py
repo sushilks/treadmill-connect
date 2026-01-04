@@ -51,6 +51,13 @@ class ConsoleUI:
     def __init__(self):
         self.status_line = ""
         self.is_tty = sys.stdout.isatty()
+        self.incline_pct = 0.0
+        self.distance_m = 0.0
+        self.calories = 0
+        self.elapsed_time = 0
+        self.last_update = 0
+        self.last_calc_time = 0
+        self.target_speed_kph = 0.0 # Echo Strategy
         self.last_print_time = 0
         
     def update_status(self, state):
@@ -154,10 +161,10 @@ FTMS_INCLINE_RANGE_UUID = "00002AD5-0000-1000-8000-00805F9B34FB"
 SERVER_NAME = "mytm"
 
 # Feature Mask: 
-# Byte 0: Bits 0-7. 0x22 = (Bit 1: Total Dist, Bit 5: Inclination)
-# Byte 1: Bits 8-15. 0x01 = (Bit 8: Expended Energy)
+# Byte 0: Bits 0-7. 0x62 = (Bit 1: Total Dist, Bit 5: Inclination, Bit 6: Stop/Pause)
+# Byte 1: Bits 8-15. 0x11 = (Bit 8: Expended Energy, Bit 12: Elapsed Time)
 # Byte 4: Bits 0-7 (Target). 0x03 = (Bit 0: Speed Target, Bit 1: Inc Target)
-FTMS_FEATURE_VAL = b'\x22\x01\x00\x00\x03\x00\x00\x00'
+FTMS_FEATURE_VAL = b'\x62\x11\x00\x00\x03\x00\x00\x00'
 
 # =============================================================================
 # SHARED STATE
@@ -181,6 +188,8 @@ class BridgeState:
         self.last_update_ts = 0
         self.initial_t_raw = None
         self.initial_cal_raw = None
+        self.target_speed_kph = 0.0 # For echo strategy
+        self.target_incline_pct = 0.0 # For echo strategy
 
 state = BridgeState()
 
@@ -197,6 +206,11 @@ TYPE_INCLINE = 0x02
 # =============================================================================
 def create_control_command(type_id, value):
     if type_id == TYPE_SPEED:
+         # Machine expects KPH (0.01 unit).
+         # FTMS sends KPH (0.01 unit).
+         # Pass raw value.
+         # 4.8 KPH (480) -> Machine (480) -> 3.0 MPH (Console) / 4.8 KPH.
+         
          # 020402090409020101VVVV00CS
          base = bytearray.fromhex("020402090409020101")
          base.extend(struct.pack('<H', int(value)))
@@ -284,25 +298,6 @@ async def ifit_client_loop(server: BlessServer):
     reassembler = PacketReassembler()
     
     def decode_telemetry(sender, data):
-        # ... (Existing Decode Logic remains same, omitted for brevity, logic is inside inner loop)
-        # We need to define this function or keep the existing one.
-        # Ideally we only modify the LOOP structure around it.
-        pass
-
-    # Re-define decode locally or assume we wrap the existing logic? 
-    # Since I'm using multi-replace, I should replace the LOOP logic primarily.
-    # But decode_telemetry is inside the function scope.
-    # Let me preserve decode_telemetry by NOT replacing it, but I cannot modify the loop *around* it easily without touching it.
-    # ACTUALLY: decode_telemetry is huge. I should try to leave it alone.
-    # I will replace the START of the function and the WHILE loop, but I have to be careful about indentation.
-    
-    # Let's extract decode_telemetry logic if possible? No, it uses local variables like reassembler.
-    
-    # BETTER APPROACH: Modify the 'while True' loop and the connection logic, keeping the inner helper intact if possible.
-    # But the inner helper is defined *inside* the function.
-    
-    # Strategy: Replace the entire function `ifit_client_loop`.
-    # I will copy the decode_telemetry from the source file content I have.
         try:
              # Feed Watchdog
              state.last_notify_time = time.time()
@@ -315,24 +310,35 @@ async def ifit_client_loop(server: BlessServer):
                 i_raw = struct.unpack_from('<H', payload, 10)[0]
                 
                 # Update State
-                state.speed_kph = s_raw / 100.0
+                # Update State
+                # Echo Strategy: Use Target Speed if set, to prevent Ramping Timeout.
+                # If Target > 0, report Target. Else report Actual.
+                
+                # Actual (Machine reports KPH x100)
+                actual_kph = s_raw / 100.0
+                
+                if state.target_speed_kph > 0:
+                    state.speed_kph = state.target_speed_kph
+                else:
+                    state.speed_kph = actual_kph
+
                 state.incline_pct = i_raw / 100.0
                 
-                # Distance Strategy: Prefer Treadmill, Fallback to Calculation
-                if len(payload) >= 46:
-                    d_raw = struct.unpack_from('<I', payload, 42)[0]
-                    dist_val = d_raw / 100.0
-                    
-                    if dist_val > 0:
-                        state.distance_m = dist_val
-                    else:
-                        current_time = time.time()
-                        if hasattr(state, 'last_calc_time'):
-                            dt = current_time - state.last_calc_time
-                            if dt > 0 and dt < 2.0: 
-                                m_per_s = (state.speed_kph * 1000) / 3600.0
-                                state.distance_m += (m_per_s * dt)
-                        state.last_calc_time = current_time
+                # Distance Strategy: Force Calculation (Integration)
+                # Machine Distance (Offset 42) is often stuck/static in Remote Mode.
+                # We calculate distance based on Speed * Time to ensure App sees progress.
+                current_time = time.time()
+                if hasattr(state, 'last_calc_time'):
+                    dt = current_time - state.last_calc_time
+                    if dt > 0 and dt < 2.0: 
+                        m_per_s = (state.speed_kph * 1000) / 3600.0
+                        state.distance_m += (m_per_s * dt)
+                state.last_calc_time = current_time
+
+                # Optional: Log Machine Distance for debug, but don't use it
+                # if len(payload) >= 46:
+                #     d_raw = struct.unpack_from('<I', payload, 42)[0]
+
                 
                 # Time (Offset 27)
                 if len(payload) >= 31:
@@ -637,9 +643,23 @@ def handle_read(characteristic: BlessGATTCharacteristic, **kwargs):
     logger.info(f"FTMS READ: {characteristic.uuid}")
     return characteristic.value
 
-def handle_control_point(characteristic: BlessGATTCharacteristic, value: bytearray, **kwargs):
-    global ftms_server
-    # OpCodes
+def handle_control_point(characteristic: BlessGATTCharacteristic, value: Any, **kwargs):
+    # Log RAW command for analysis
+    if isinstance(value, (bytes, bytearray)):
+        hex_val = value.hex()
+    else:
+        hex_val = str(value)
+        
+    logger.info(f"FTMS Control Write: {hex_val}")
+    
+    if characteristic.uuid == FTMS_CONTROL_POINT_UUID.lower(): # Fix UUID Case check here too!
+        data = value
+        if len(data) < 1: return
+        
+        opcode = data[0]
+        logger.info(f"FTMS OpCode: {opcode:#02x}")
+        
+        # Prepare Response (Default Success)
     # 0x00: Request Control
     # 0x01: Reset
     # 0x07: Start/Resume
@@ -694,7 +714,8 @@ def handle_control_point(characteristic: BlessGATTCharacteristic, value: bytearr
              try:
                  server_obj.get_characteristic(FTMS_STATUS_UUID).value = b'\x04'
                  server_obj.update_value(FTMS_SERVICE_UUID, FTMS_STATUS_UUID)
-             except Exception: pass
+             except Exception as e:
+                 logger.warning(f"Status Update Failed (0x07): {e}")
          pass
          
     elif opcode == 0x08: # Stop
@@ -705,24 +726,31 @@ def handle_control_point(characteristic: BlessGATTCharacteristic, value: bytearr
              try:
                  server_obj.get_characteristic(FTMS_STATUS_UUID).value = b'\x02\x01'
                  server_obj.update_value(FTMS_SERVICE_UUID, FTMS_STATUS_UUID)
-             except Exception: pass
+             except Exception as e:
+                 logger.warning(f"Status Update Failed (0x08): {e}")
          
     elif opcode == 0x02 and len(value) >= 3: # Set Target Speed (MANDATORY)
          val_raw = struct.unpack_from('<H', value, 1)[0]
          # FTMS: 0.01 km/h resolution (e.g. 500 = 5.0 km/h)
          # iFit: 0.01 km/h resolution (e.g. 500 = 5.0 km/h) [Based on telemetry decode]
-         ifit_val = int(val_raw)
-         kph = val_raw/100.0
-         mph = kph * 0.621371
-         logger.info(f"🎮 Set Speed: {kph} km/h ({mph:.1f} mph)")
-         state.control_queue.put_nowait((TYPE_SPEED, ifit_val))
+         kph = val_raw / 100.0
+         
+         logger.info(f"FTMS Set Speed: {kph} km/h")
+         
+         # Update Target for Echo
+         state.target_speed_kph = kph
+         
+         # Send to Queue (val_raw is already in iFit's 0.01 kph format)
+         state.control_queue.put_nowait((TYPE_SPEED, val_raw))
+         
          # Send Status: Target Speed Changed (0x05) + Speed
          if server_obj:
              try:
                  val = b'\x05' + struct.pack('<H', val_raw)
                  server_obj.get_characteristic(FTMS_STATUS_UUID).value = val
                  server_obj.update_value(FTMS_SERVICE_UUID, FTMS_STATUS_UUID)
-             except Exception: pass
+             except Exception as e:
+                 logger.warning(f"Status Update Failed (0x02): {e}")
          
     elif opcode == 0x03 and len(value) >= 3: # Set Target Inclination (MANDATORY)
          val_raw = struct.unpack_from('<h', value, 1)[0]
@@ -739,7 +767,8 @@ def handle_control_point(characteristic: BlessGATTCharacteristic, value: bytearr
                  val = b'\x06' + struct.pack('<h', val_raw)
                  server_obj.get_characteristic(FTMS_STATUS_UUID).value = val
                  server_obj.update_value(FTMS_SERVICE_UUID, FTMS_STATUS_UUID)
-             except Exception: pass
+             except Exception as e:
+                 logger.warning(f"Status Update Failed (0x03): {e}")
          
     # To Send Indication in Bless, we need "server.update_value". But we don't have 'server' here.
     # We will use a queue to send response back to main loop to send indication.
@@ -757,22 +786,28 @@ def handle_control_point(characteristic: BlessGATTCharacteristic, value: bytearr
 def handle_read(characteristic: BlessGATTCharacteristic, **kwargs):
     logger.info(f"FTMS READ: {characteristic.uuid} ({characteristic.description})")
     
+    char_uuid = str(characteristic.uuid).lower()
+    
     # Training Status (Read+Notify) - 2AD3
-    if characteristic.uuid == FTMS_TRAINING_STATUS_UUID:
-        return b'\x00\x01' # Flags=0, Status=1 (Idle)
+    if char_uuid == FTMS_TRAINING_STATUS_UUID.lower():
+        # Check global state for speed
+        # Flags=0, Status: 1=Idle, 2=Active
+        if state.speed_kph > 0 or state.target_speed_kph > 0:
+             return b'\x00\x02' # Active
+        return b'\x00\x01' # Idle
 
     # Supported Speed Range - 2AD4
-    if characteristic.uuid == FTMS_SPEED_RANGE_UUID:
+    if char_uuid == FTMS_SPEED_RANGE_UUID.lower():
         # Min(1.0), Max(20.0), Inc(0.1)
         return struct.pack('<HHH', 100, 2000, 10)
         
     # Supported Incline Range - 2AD5
-    if characteristic.uuid == FTMS_INCLINE_RANGE_UUID:
+    if char_uuid == FTMS_INCLINE_RANGE_UUID.lower():
         # Min(-6.0), Max(15.0), Inc(0.1)
         return struct.pack('<hhh', -60, 150, 10)
         
     # Feature (Read) - 2ACC
-    if characteristic.uuid == FTMS_FEATURE_UUID:
+    if char_uuid == FTMS_FEATURE_UUID.lower():
         return FTMS_FEATURE_VAL
 
     return characteristic.value
@@ -987,7 +1022,7 @@ async def ftms_server_loop():
         # 1. Process Indications (FAST)
         while not state.response_queue.empty():
             response = await state.response_queue.get()
-            logger.debug(f"Sending Indication: {response.hex()}")
+            logger.info(f"Sending Indication: {response.hex()}")
             try:
                 server.get_characteristic(FTMS_CONTROL_POINT_UUID).value = bytes(response)
                 success = server.update_value(FTMS_SERVICE_UUID, FTMS_CONTROL_POINT_UUID)
